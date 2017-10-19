@@ -18,11 +18,11 @@ import glob
 
 from os.path import dirname, basename, isfile
 
+from ..util import classlogger
+
 modules = glob.glob(dirname(__file__)+"/*.py")
 
 __all__ = [ basename(f)[:-3] for f in modules if isfile(f) and not f.endswith('__init__.py')]
-
-from . import *
 
 @classlogger
 class Actions(object):
@@ -35,13 +35,14 @@ class Actions(object):
 
     @classmethod
     def register_action(cls, action_name, action):
+        cls.logger.info('Action "{}" registered'.format(action_name))
         cls.actions[action_name] = action
 
     @classmethod
     def action(cls, action_name=None):
 
         def decorator(f):
-            if not action_name:
+            if not False:# action_name:
                 action_name = f.__name__
 
             if action_name in cls.actions:
@@ -58,3 +59,4 @@ action = Actions.action
 get_action = Actions.get_action
 register_action = Actions.register_action
 
+from . import *

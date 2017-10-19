@@ -7,17 +7,23 @@ import sys
 import logging
 import argparse
 
-from util import random_sleep
+if __package__ is None:
+    __package__ = 'slipstream.job'
+    __import__(__package__)
+
 #from action import *
-from action import get_action
-from controller import JobController, ActionNotImplemented
+from .action import get_action
+from .controller import JobController, ActionNotImplemented
+
+#from action.virtual_machines_collect import virtual_machine_collect
 
 __version__ = 0.1
 
+logger = logging.getLogger('{}.{}'.format(__package__, __name__))
 
 def job_processor(job):
     if not job or 'action' not in job:
-        logging.warning('Invalid job: {}'.format(job))
+        logger.warning('Invalid job: {}'.format(job))
 
     action_name = job.get('action')
     action = get_action(action_name)
@@ -25,12 +31,12 @@ def job_processor(job):
     if not action:
         raise ActionNotImplemented(action_name)
 
-    logging.debug('Processing job {}'.format(job))
+    logger.debug('Processing job {}'.format(job.job_uri))
     job.set_state('RUNNING')
     try:
         return action(job)
     except:
-        logging.exception('Job failed while processing it')
+        logger.exception('Job failed while processing it')
         # TODO: Fail the job or raise something so that the caller fail the job
         raise
 
@@ -39,6 +45,7 @@ def main(argv):
     logging.basicConfig(level=logging.DEBUG)
 
     logging.getLogger("kazoo").setLevel(logging.INFO)
+    logging.getLogger('slipstream').setLevel(logging.DEBUG)
     
     parser = argparse.ArgumentParser(description='Process SlipStream jobs')
 

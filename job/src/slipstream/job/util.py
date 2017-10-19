@@ -24,8 +24,14 @@ def classlogger(c):
     The log attribute contain a logger with the name:
         <module_name>.<class_name>
     """
+    if len(logging.getLogger().handlers) < 1:
+        logging.basicConfig(level=logging.DEBUG)
     setattr(c, 'logger', logging.getLogger('%s.%s' % (c.__module__, c.__name__)))
     return c
+
+def print_stack():
+    import traceback
+    traceback.print_stack()
 
 
 class InterruptException(Exception):
