@@ -42,13 +42,14 @@ class Actions(object):
     def action(cls, action_name=None):
 
         def decorator(f):
-            if not False:# action_name:
-                action_name = f.__name__
+            _action_name = action_name
+            if not action_name:
+                _action_name = f.__name__
 
-            if action_name in cls.actions:
-                cls.logger.error('Action "{}" is already defined'.format(action_name))
+            if _action_name in cls.actions:
+                cls.logger.error('Action "{}" is already defined'.format(_action_name))
             else:
-                cls.register_action(action_name, f)
+                cls.register_action(_action_name, f)
 
             return f
 
