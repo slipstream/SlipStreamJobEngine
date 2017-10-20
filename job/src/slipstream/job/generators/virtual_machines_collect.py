@@ -8,6 +8,10 @@ import time
 import logging
 import argparse
 
+if __package__ is None:
+    __package__ = 'slipstream.job.generators'
+    __import__(__package__)
+
 from ..controller import JobController
 
 __version__ = 0.1
@@ -38,7 +42,7 @@ class VirtualMachinesCollectJobGenerator(object):
             credentials = self._get_credentials()
             nb_credentials = len(credentials)
 
-            yield_interval = float(self.collect_interval) / float(nb_credentials) * 0.6
+            yield_interval = float(self.collect_interval) / max(float(nb_credentials), 1) * 0.6
 
             for credential in credentials:
                 job = {'action': 'collect_virtual_machines',
@@ -51,6 +55,9 @@ class VirtualMachinesCollectJobGenerator(object):
 
 def main(argv):
     logging.basicConfig(level=logging.DEBUG)
+
+    logging.getLogger("kazoo").setLevel(logging.INFO)
+    logging.getLogger('slipstream').setLevel(logging.DEBUG)
 
     parser = argparse.ArgumentParser(description='Process SlipStream jobs')
 
