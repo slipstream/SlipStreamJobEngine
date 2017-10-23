@@ -2,9 +2,10 @@
 
 from __future__ import print_function
 
+from slipstream.api import SlipStreamError
+
 from .util import classlogger
 
-from slipstream.api import SlipStreamError
 
 @classlogger
 class Job(dict):

@@ -1,25 +1,24 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
 
-from slipstream.util import loadModule as load_module
+from ..util import load_module
 
-from ..action import action
+from ..actions import action
 
 connector_classes = {
-    'azure'                  : 'slipstream_azure.AzureClientCloud',
-    'cloudstack'             : 'slipstream_cloudstack.CloudStackClientCloud',
-    'cloudstackadvancedzone' : 'slipstream_cloudstack.CloudStackAdvancedZoneClientCloud',
-    'ec2'                    : 'slipstream_ec2.Ec2ClientCloud',
-    'exoscale'               : 'slipstream_exoscale.ExoscaleClientCloud',
-    'nuvlabox'               : 'slipstream_nuvlabox.NuvlaBoxClientCloud',
-    'opennebula'             : 'slipstream_opennebula.OpenNebulaClientCloud',
-    'openstack'              : 'slipstream_openstack.OpenStackClientCloud',
-    'otc'                    : 'slipstream_otc.OpenTelekomClientCloud',
-    'softlayer'              : 'slipstream_nativesoftlayer.NativeSoftLayerClientCloud',
-    'stratuslab'             : 'slipstream_stratuslab.StratusLabClientCloud',
-    'stratuslabiter'         : 'slipstream_stratuslab.StratusLabIterClientCloud',
+    'azure':                  'slipstream_azure.AzureClientCloud',
+    'cloudstack':             'slipstream_cloudstack.CloudStackClientCloud',
+    'cloudstackadvancedzone': 'slipstream_cloudstack.CloudStackAdvancedZoneClientCloud',
+    'ec2':                    'slipstream_ec2.Ec2ClientCloud',
+    'exoscale':               'slipstream_exoscale.ExoscaleClientCloud',
+    'nuvlabox':               'slipstream_nuvlabox.NuvlaBoxClientCloud',
+    'opennebula':             'slipstream_opennebula.OpenNebulaClientCloud',
+    'openstack':              'slipstream_openstack.OpenStackClientCloud',
+    'otc':                    'slipstream_otc.OpenTelekomClientCloud',
+    'softlayer':              'slipstream_nativesoftlayer.NativeSoftLayerClientCloud',
+    'stratuslab':             'slipstream_stratuslab.StratusLabClientCloud',
+    'stratuslabiter':         'slipstream_stratuslab.StratusLabIterClientCloud',
 }
 
 
@@ -67,12 +66,11 @@ class VirtualMachinesCollectJob(object):
             self._cloud_configuration = self._get_cloud_configuration()
         return self._cloud_configuration
 
-
     def collect_virtual_machines(self):
         connector = self.connector
 
         if not hasattr(connector, 'instantiate_from_cimi'):
-            raise NotImplementedError('The connector "{}" is not compatible with the collect_virtual_machines job'\
+            raise NotImplementedError('The connector "{}" is not compatible with the collect_virtual_machines job'
                                       .format(self.connector_name))
 
         connector_instance = connector.instantiate_from_cimi(self.cloud_configuration, self.cloud_credential)
@@ -83,5 +81,3 @@ class VirtualMachinesCollectJob(object):
 
     def handle_vm(self, vm):
         print(vm)
-
-

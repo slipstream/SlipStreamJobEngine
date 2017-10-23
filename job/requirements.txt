@@ -1,1 +1,2 @@
 slipstream-api
+kazoo

@@ -23,7 +23,7 @@ setup(
     url='http://sixsq.com/slipstream',
     description="SlipStream Job Engine.",
     keywords='slipstream devops job engine',
-    package_dir={'slipstream': 'src/slipstream'},
+    package_dir={'': 'src'},
     packages=packages,
     namespace_packages=['slipstream'],
     zip_safe=False,
