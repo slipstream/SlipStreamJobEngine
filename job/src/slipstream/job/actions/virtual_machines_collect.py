@@ -34,8 +34,6 @@ class VirtualMachinesCollectJob(object):
         self._cloud_configuration = None
         self._connector_name = None
 
-        self.collect_virtual_machines()
-
     def _get_cloud_credential(self):
         return self.ss_api.cimi_get(self.job['targetResource']['href']).json
 
@@ -81,3 +79,6 @@ class VirtualMachinesCollectJob(object):
 
     def handle_vm(self, vm):
         print(vm)
+
+    def do_work(self):
+        self.collect_virtual_machines()

@@ -28,7 +28,7 @@ class CollectDistributor(Distributor):
         return self.collect_interval - self._time_spent(start_time)
 
     @override
-    def _job_generator(self):
+    def job_generator(self):
         while True:
             start_time = time.time()
 

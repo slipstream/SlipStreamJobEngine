@@ -18,6 +18,7 @@ from .util import override
 class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
+        self._queue = None
 
     @override
     def _set_command_specific_options(self, parser):
@@ -70,7 +71,7 @@ class Executor(Base):
         self.logger.debug(self._log_msg('Processing job {}'.format(job.job_uri)))
         job.set_state('RUNNING')
         try:
-            return action(job)
+            return action(job).do_work()
         except:
             self.logger.exception(self._log_msg('Job failed while processing it'))
             # TODO: Fail the job or raise something so that the caller fail the job
@@ -78,11 +79,13 @@ class Executor(Base):
 
     @override
     def do_work(self):
+        self._queue = self._kz.LockingQueue('/job')
+        self.logger.info(self._log_msg('I am executor {}.'.format(self.name)))
         threads = {}
 
         for i in range(1, self.args.number_of_thread + 1):
             th_name = 'job_processor_{}'.format(i)
-            th = Thread(target=self._process_jobs, name=th_name, args=th_name)
+            th = Thread(target=self._process_jobs, name=th_name, args=(th_name,))
             th.daemon = True
             th.start()
             threads[th_name] = th

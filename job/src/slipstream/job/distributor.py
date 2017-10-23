@@ -28,10 +28,10 @@ class Distributor(Base):
         election = self._kz.Election('/election/{}'.format(self._get_jobs_type()), self.name)
         while True:
             self.logger.info(self._log_msg('STARTING ELECTION'))
-            election.run(self._job_distributor, self._job_generator)
+            election.run(self._job_distributor)
 
     # ----- METHOD THAT CAN/SHOULD BE IMPLEMENTED IN DISTRIBUTOR SUBCLASS -----
-    def _job_generator(self):
+    def job_generator(self):
         """This is a generator function that produces a sequence of Job(s) to be added to SSCLJ server.
         This function must be override by the user subclass.
         """
@@ -41,5 +41,5 @@ class Distributor(Base):
         raise NotImplementedError()
 
     def do_work(self):
-        self.logger.info(self._log_msg('I am {} distributor.'.format(self.name)))
+        self.logger.info(self._log_msg('I am distributor {}.'.format(self.name)))
         self._start_distribution()

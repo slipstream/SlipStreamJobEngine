@@ -31,11 +31,11 @@ class Base(object):
         logging.getLogger('slipstream').setLevel(logging.DEBUG)
 
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
-        required_args = parser.add_argument_group('Required named arguments')
+        required_args = parser.add_argument_group('required named arguments')
 
         parser.add_argument('--zk-hosts', dest='zk_hosts',
                             metavar='HOSTS', default='127.0.0.1:2181',
-                            help='Coma separated list (CSV) of ZooKeeper hosts to connect')
+                            help='Coma separated list of ZooKeeper hosts to connect (default: 127.0.0.1:2181)')
 
         parser.add_argument('--ss-url', dest='ss_url',
                             help='SlipStream endpoint to connect to (default: https://nuv.la)',
@@ -67,8 +67,8 @@ class Base(object):
     def execute(self):
         self.name = self.args.name if self.args.name is not None else names[int(random.uniform(1, len(names) - 1))]
 
-        self.ss_api = Api(endpoint=self.args.ss_endpoint, insecure=self.args.ss_insecure)
-        self.ss_api.login_internal(self.args.ss_username, self.args.ss_password)
+        self.ss_api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure)
+        self.ss_api.login_internal(self.args.ss_user, self.args.ss_pass)
 
         self._kz = KazooClient(self.args.zk_hosts)
         self._kz.start()
