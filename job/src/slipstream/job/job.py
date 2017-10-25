@@ -10,6 +10,8 @@ from .util import classlogger
 @classlogger
 class Job(dict):
 
+    final_states = ['SUCCESS', 'FAILED']
+
     def __init__(self, ss_api, job_uri):
         self.ss_api = ss_api
         self.job_uri = job_uri

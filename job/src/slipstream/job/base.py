@@ -5,15 +5,14 @@ from __future__ import print_function
 import argparse
 import logging
 import random
-
 import sys
 from kazoo.client import KazooClient
 from slipstream.api import Api
 
 from .util import classlogger
 
-names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy']
-
+names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',
+         'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
 
 @classlogger
 class Base(object):

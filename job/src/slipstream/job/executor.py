@@ -37,6 +37,11 @@ class Executor(Base):
                     time.sleep(0.1)
                     continue
 
+                if job.get('state') in Job.final_states:
+                    self.logger.warning(self._log_msg('Job {} in final state will throw it.').format(job_uri))
+                    self._queue.consume()
+                    continue
+
                 self.logger.info(self._log_msg('Executing job "{}" ...'.format(job_uri), name=thread_name))
 
                 try:

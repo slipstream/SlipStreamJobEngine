@@ -48,7 +48,7 @@ class VirtualMachinesCollectJob(object):
 
     @property
     def cloud_name(self):
-        return self.cloud_credential['name']
+        return self.cloud_credential['connector']['href']
 
     @property
     def connector_name(self):

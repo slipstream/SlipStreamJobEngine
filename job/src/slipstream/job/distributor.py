@@ -14,7 +14,8 @@ class Distributor(Base):
         super(Distributor, self).__init__()
 
     def _job_distributor(self):
-        self.logger.info(self._log_msg('I ({}) am the leader (I have been elected)'.format(self.name)))
+        self.logger.info(self._log_msg('I am {} and I have been elected to distribute "{}" jobs'
+                                       .format(self.name, self._get_jobs_type())))
         while True:
             for cimi_job in self.job_generator():
                 try:
