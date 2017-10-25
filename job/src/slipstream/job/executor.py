@@ -26,7 +26,7 @@ class Executor(Base):
                             metavar='#', type=int, help='Number of worker threads to start')
 
     def _process_jobs(self, thread_name):
-        while True:
+        while not self.stop_event.is_set():
             job_uri = None
             try:
                 job_uri = self._queue.get()
@@ -62,6 +62,7 @@ class Executor(Base):
                     self.logger.info(self._log_msg('Job "{}" finished'.format(job_uri), name=thread_name))
             except:
                 self.logger.exception('Fatal error when trying to handle job "{}"'.format(job_uri))
+        self.logger.info('Thread {} properly stopped.'.format(thread_name))
 
     def job_processor(self, job):
         if not job or 'action' not in job:
@@ -86,17 +87,8 @@ class Executor(Base):
     def do_work(self):
         self._queue = self._kz.LockingQueue('/job')
         self.logger.info(self._log_msg('I am executor {}.'.format(self.name)))
-        threads = {}
 
         for i in range(1, self.args.number_of_thread + 1):
             th_name = 'job_processor_{}'.format(i)
             th = Thread(target=self._process_jobs, name=th_name, args=(th_name,))
-            th.daemon = True
             th.start()
-            threads[th_name] = th
-
-            # for thread in threads.values():
-            #    thread.join()
-
-        while True:
-            time.sleep(1)

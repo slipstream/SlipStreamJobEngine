@@ -6,6 +6,9 @@ import argparse
 import logging
 import random
 import sys
+import threading
+import signal
+from functools import partial
 from kazoo.client import KazooClient
 from slipstream.api import Api
 
@@ -22,6 +25,10 @@ class Base(object):
         self._kz = None
         self.ss_api = None
         self.name = None
+        self.stop_event = threading.Event()
+
+        signal.signal(signal.SIGTERM, partial(Base.on_exit, self.stop_event))
+        signal.signal(signal.SIGINT, partial(Base.on_exit, self.stop_event))
 
     def _init_args_parser(self):
         logging.basicConfig(level=logging.DEBUG)
@@ -60,6 +67,11 @@ class Base(object):
     def _log_msg(self, message, name=None):
         return '{} - {}'.format(name or self.name, message)
 
+    @staticmethod
+    def on_exit(stop_event, signum, frame):
+        stop_event.set()
+        sys.exit(0)
+
     def do_work(self):
         raise NotImplementedError()
 
@@ -73,6 +85,8 @@ class Base(object):
         self._kz.start()
 
         self.do_work()
+
+        signal.pause()
 
 
 def main(command):
