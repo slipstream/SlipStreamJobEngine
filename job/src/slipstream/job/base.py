@@ -33,8 +33,9 @@ class Base(object):
     def _init_args_parser(self):
         logging.basicConfig(level=logging.DEBUG)
 
-        logging.getLogger("kazoo").setLevel(logging.INFO)
-        logging.getLogger('slipstream').setLevel(logging.DEBUG)
+        logging.getLogger('kazoo').setLevel(logging.INFO)
+        logging.getLogger('slipstream').setLevel(logging.INFO)
+        logging.getLogger('urllib3').setLevel(logging.WARN)
 
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
         required_args = parser.add_argument_group('required named arguments')
@@ -69,6 +70,7 @@ class Base(object):
 
     @staticmethod
     def on_exit(stop_event, signum, frame):
+        print('\n\nExecution interrupted by the user... goodbye!')
         stop_event.set()
         sys.exit(0)
 
@@ -92,10 +94,6 @@ class Base(object):
 def main(command):
     try:
         command().execute()
-        exit(0)
-    except KeyboardInterrupt:
-        print('\n\nExecution interrupted by the user... goodbye!')
-        exit(1)
     except Exception as e:
         print(e, file=sys.stderr)
         exit(2)

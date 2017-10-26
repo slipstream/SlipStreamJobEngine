@@ -23,7 +23,7 @@
     </licenses>
 
     <modules>
-        <module>api</module>
+        <module>job</module>
         <module>pypi</module>
     </modules>
 

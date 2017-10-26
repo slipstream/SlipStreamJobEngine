@@ -14,7 +14,7 @@ from slipstream.job.util import override
 class CollectDistributor(Distributor):
     def __init__(self):
         super(CollectDistributor, self).__init__()
-        self.collect_interval = 60.0
+        self.collect_interval = 10.0
 
     def _get_credentials(self):
         response = self.ss_api.cimi_search('credentials', filter='type^="cloud-cred"')
@@ -38,6 +38,7 @@ class CollectDistributor(Distributor):
             yield_interval = float(self.collect_interval) / max(float(nb_credentials), 1) * 0.6
 
             for credential in credentials:
+                # TODO: Search for collect_virtual_machine in state queued with following credential if not exist yield
                 job = {'action': 'collect_virtual_machines',
                        'targetResource': {'href': credential['id']}}
                 yield job

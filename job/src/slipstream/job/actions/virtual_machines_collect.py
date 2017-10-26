@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 from ..util import load_module
+from ..util import classlogger
 
 from ..actions import action
 
@@ -21,7 +22,7 @@ connector_classes = {
     'stratuslabiter':         'slipstream_stratuslab.StratusLabIterClientCloud',
 }
 
-
+@classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
 
@@ -72,8 +73,11 @@ class VirtualMachinesCollectJob(object):
                                       .format(self.connector_name))
 
         connector_instance = connector.instantiate_from_cimi(self.cloud_configuration, self.cloud_credential)
-        for vm in connector_instance.list_instances():
-            self.handle_vm(vm)
+        vms = connector_instance.list_instances()
+        if len(vms) > 0:
+            map(self.handle_vm, vms)
+        else:
+            self.logger.info('No VM to collect.')
 
         return 10000
 

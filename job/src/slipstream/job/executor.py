@@ -47,8 +47,14 @@ class Executor(Base):
                 try:
                     return_code = self.job_processor(job)
                 except ActionNotImplemented as e:
-                    self.logger.warning(self._log_msg('Action "{}" not implemented'.format(str(e))))
-                    self._queue.release()
+                    self.logger.exception(self._log_msg('Action "{}" not implemented'.format(str(e))))
+                    self._queue.consume()
+                    # Consume not implemented action to avoid queue to be filled with not implemented actions
+                    msg = 'Not implemented action!'.format(job_uri)
+                    status_message = '{}: {}'.format(msg, str(e))
+                    job.update_job(state='FAILED', status_message=status_message)
+                    # TODO: The idea was to release, perhaps another executor have this action implemented
+                    # self._queue.release()
                 except Exception as e:
                     msg = 'Failed to process job {}'.format(job_uri)
                     self.logger.exception(self._log_msg(msg))
