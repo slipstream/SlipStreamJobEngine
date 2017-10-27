@@ -14,10 +14,10 @@ from slipstream.job.util import override
 class CollectDistributor(Distributor):
     def __init__(self):
         super(CollectDistributor, self).__init__()
-        self.collect_interval = 10.0
+        self.collect_interval = 60.0
 
     def _get_credentials(self):
-        response = self.ss_api.cimi_search('credentials', filter='type^="cloud-cred"')
+        response = self.ss_api.cimi_search('credentials', filter='type^="cloud-cred-"')
         return response.json.get('credentials')
 
     @staticmethod
