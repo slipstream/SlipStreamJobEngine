@@ -91,7 +91,7 @@
                             <directoryIncluded>false</directoryIncluded>
                             <sources>
                                 <source>
-                                    <location>${project.build.directory}/job</location>
+                                    <location>${project.build.directory}/job/src/</location>
                                     <includes>
                                         <include>slipstream/**/*</include>
                                     </includes>
