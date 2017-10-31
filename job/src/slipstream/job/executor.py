@@ -91,7 +91,6 @@ class Executor(Base):
 
     @override
     def do_work(self):
-        #self._queue = self._kz.LockingQueue('/job')
         self.logger.info(self._log_msg('I am executor {}.'.format(self.name)))
 
         for i in range(1, self.args.number_of_thread + 1):
