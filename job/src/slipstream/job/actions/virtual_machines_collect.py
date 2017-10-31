@@ -102,17 +102,6 @@ class VirtualMachinesCollectJob(object):
             self._existing_virtual_machines_credential = {vm.json['instanceID']: vm.json for vm in vms}
         return self._existing_virtual_machines_credential
 
-    def collect_virtual_machines(self):
-        vms = self.connector_instance.list_instances()
-        if len(vms) > 0:
-            map(self.handle_vm, vms)
-        else:
-            self.logger.info('No VMs to collect.')
-
-        self.delete_gone_vms()
-
-        return 10000
-
     def is_new_vm(self, vm_id):
         return not self.existing_virtual_machines_connector.get(vm_id)
 
@@ -123,8 +112,8 @@ class VirtualMachinesCollectJob(object):
 
         if self.is_new_vm(vm_id):
             cimi_new_vm = self._create_cimi_vm(vm_id, vm)
-            vm_cimi_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
-            self.logger.info('Added new VM: {}'.format(vm_cimi_id))
+            cimi_vm_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
+            self.logger.info('Added new VM: {}'.format(cimi_vm_id))
         else:  # staying vm
             cimi_vm_id = self.existing_virtual_machines_connector[vm_id]['id']
             cimi_vm = self._create_cimi_vm(vm_id, vm)
@@ -139,6 +128,7 @@ class VirtualMachinesCollectJob(object):
             self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
             self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
 
+        self.job.add_affected_resource(cimi_vm_id)
         self.handled_vms_instance_id.add(vm_id)
 
     def _create_cimi_vm(self, vm_id, vm):
@@ -180,8 +170,6 @@ class VirtualMachinesCollectJob(object):
             else:
                 service_offer = {'id': 'service-offer/unknown'}
 
-
-
         cimi_vm = {'resourceURI': 'http://sixsq.com/slipstream/1/VirtualMachine',
                    'connector': {'href': self.cloud_name},
                    'instanceID': vm_id,
@@ -217,6 +205,23 @@ class VirtualMachinesCollectJob(object):
             vm_cimi_id = self.existing_virtual_machines_credential[gone_vm_instance_id]['id']
             self.logger.info('Deleting gone VM: {}'.format(vm_cimi_id))
             self.ss_api.cimi_delete(vm_cimi_id)
+
+    def collect_virtual_machines(self):
+        self.logger.info('Collect virtual machines started for {}.'.format(self.cloud_credential['id']))
+        vms = self.connector_instance.list_instances()
+
+        self.job.set_progress(40)
+
+        if len(vms) > 0:
+            map(self.handle_vm, vms)
+        else:
+            self.logger.info('No VMs to collect.')
+
+        self.job.set_progress(80)
+
+        self.delete_gone_vms()
+
+        return 10000
 
     def do_work(self):
         self.collect_virtual_machines()

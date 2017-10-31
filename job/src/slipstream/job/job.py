@@ -49,15 +49,15 @@ class Job(dict):
 
     def add_affected_resources(self, affected_resources):
         has_to_update = False
-        current_affected_resources = self.get('affectedResources', [])
+        current_affected_resources_ids = [resource['href'] for resource in self.get('affectedResources', [])]
 
         for affected_resource in affected_resources:
-            if affected_resource not in current_affected_resources:
-                current_affected_resources.append(affected_resource)
+            if affected_resource not in current_affected_resources_ids:
+                current_affected_resources_ids.append(affected_resource)
                 has_to_update = True
 
         if has_to_update:
-            self._edit_job('affectedResources', current_affected_resources)
+            self._edit_job('affectedResources', [{'href': id} for id in current_affected_resources_ids])
 
     def update_job(self, state=None, return_code=None, status_message=None):
         attributes = {}
