@@ -34,8 +34,8 @@ class Base(object):
         logging.basicConfig(level=logging.DEBUG)
 
         logging.getLogger('kazoo').setLevel(logging.INFO)
-        logging.getLogger('slipstream').setLevel(logging.INFO)
-        logging.getLogger('urllib3').setLevel(logging.WARN)
+        logging.getLogger('slipstream').setLevel(logging.DEBUG)
+        logging.getLogger('urllib3').setLevel(logging.DEBUG)
 
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
         required_args = parser.add_argument_group('required named arguments')

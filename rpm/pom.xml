@@ -72,12 +72,8 @@
                     <needarch>noarch</needarch>
                     <description>SlipStream Job Engine.</description>
                     <requires>
-                        <require>python &gt;= 2.6</require>
-                        <require>python-httplib2</require>
-                        <require>python-paramiko</require>
-                        <require>python-requests</require>
-                        <require>python-sseclient</require>
-                        <require>slipstream-useradd</require>
+                        <require>python &gt;= 2.7</require>
+                        <require>slipstream-client</require>
                     </requires>
                     <defineStatements>
                         <defineStatement>__os_install_post %{nil}</defineStatement>
@@ -95,6 +91,36 @@
                                     <includes>
                                         <include>slipstream/**/*</include>
                                     </includes>
+                                    <excludes>
+                                        <exclude>slipstream/__init__.py</exclude>
+                                    </excludes>
+                                </source>
+                            </sources>
+                        </mapping>
+                        <mapping>
+                            <directory>/opt/slipstream/job/sbin</directory>
+                            <filemode>0755</filemode>
+                            <username>slipstream</username>
+                            <groupname>slipstream</groupname>
+                            <directoryIncluded>false</directoryIncluded>
+                            <sources>
+                                <source>
+                                    <location>${project.build.directory}/job/src/scripts/</location>
+                                    <includes>
+                                        <include>*.py</include>
+                                    </includes>
+                                </source>
+                            </sources>
+                        </mapping>
+                        <mapping>
+                            <directory>/usr/lib/systemd/system</directory>
+                            <filemode>0644</filemode>
+                            <username>slipstream</username>
+                            <groupname>slipstream</groupname>
+                            <directoryIncluded>false</directoryIncluded>
+                            <sources>
+                                <source>
+                                    <location>${project.build.directory}/job/src/scripts/etc/</location>
                                 </source>
                             </sources>
                         </mapping>
@@ -106,9 +132,11 @@
                         </script>
                     </installScriptlet>
                     <postinstallScriptlet>
-                        <!-- install slipstream-api -->
                         <script>
-                            pip install -Iv slipstream-api
+                            if ! command -v pip > /dev/null; then
+                                curl "https://bootstrap.pypa.io/get-pip.py" | python
+                            fi
+                            pip install -Iv kazoo
                         </script>
                     </postinstallScriptlet>
                 </configuration>

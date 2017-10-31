@@ -19,6 +19,11 @@
             <fileMode>0644</fileMode>
         </fileSet>
         <fileSet>
+            <directory>${project.build.directory}/dist-bundle/scripts</directory>
+            <outputDirectory>src/scripts</outputDirectory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
             <directory>doc/</directory>
             <outputDirectory>share/doc</outputDirectory>
         </fileSet>
