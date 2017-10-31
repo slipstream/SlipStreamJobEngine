@@ -150,7 +150,7 @@ class VirtualMachinesCollectJob(object):
         vm_instanceType = self.connector_instance._vm_get_instance_type(vm) or None
         vm_deployment_mappings = self.ss_api.cimi_search(
             'virtualMachineMappings', filter='instanceID="{}" and cloud="{}"'
-                .format(vm_id, self.cloud_name)).resources_list
+                .format(vm_id, self.cloud_name), first=0, last=0).resources_list
         if len(vm_deployment_mappings) > 0:
             vm_deployment_mapping = vm_deployment_mappings[0]
         else:
@@ -174,7 +174,7 @@ class VirtualMachinesCollectJob(object):
                 filter_string += ' and resource:instanceType="{}"'.format(vm_instanceType)
 
             service_offers_found = self.ss_api.cimi_search('serviceOffers', filter=filter_string,
-                                                           orderby='price:unitCost').resources_list
+                                                           orderby='price:unitCost', first=0, last=1).resources_list
             if len(service_offers_found)  > 0:
                 service_offer = service_offers_found[0]
             else:

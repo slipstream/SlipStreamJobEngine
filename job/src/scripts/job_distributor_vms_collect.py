@@ -12,6 +12,8 @@ from slipstream.job.util import override
 
 @classlogger
 class CollectDistributor(Distributor):
+    ACTION_NAME = 'collect_virtual_machines'
+
     def __init__(self):
         super(CollectDistributor, self).__init__()
         self.collect_interval = 60.0
@@ -38,10 +40,16 @@ class CollectDistributor(Distributor):
             yield_interval = float(self.collect_interval) / max(float(nb_credentials), 1) * 0.6
 
             for credential in credentials:
-                # TODO: Search for collect_virtual_machine in state queued with following credential if not exist yield
-                job = {'action': 'collect_virtual_machines',
-                       'targetResource': {'href': credential['id']}}
-                yield job
+                pending_jobs = \
+                    self.ss_api.cimi_search('jobs', filter='action="{}" and targetResource/href="{}" and state="QUEUED"'
+                                            .format(CollectDistributor.ACTION_NAME, credential['id']), last=0)
+                if pending_jobs.json['count'] == 0:
+                    job = {'action': CollectDistributor.ACTION_NAME,
+                           'targetResource': {'href': credential['id']}}
+                    yield job
+                else:
+                    self.logger.debug('Action {} already queued, will not create a new job for {}.'
+                                      .format(CollectDistributor.ACTION_NAME, credential['id']))
 
                 time.sleep(yield_interval)
             time.sleep(self._time_left(start_time))
