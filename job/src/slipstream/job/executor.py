@@ -18,7 +18,6 @@ from .util import override
 class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
-        self._queue = None
 
     @override
     def _set_command_specific_options(self, parser):
@@ -26,10 +25,11 @@ class Executor(Base):
                             metavar='#', type=int, help='Number of worker threads to start')
 
     def _process_jobs(self, thread_name):
+        queue = self._kz.LockingQueue('/job')
         while not self.stop_event.is_set():
             job_uri = None
             try:
-                job_uri = self._queue.get()
+                job_uri = queue.get()
                 job = Job(self.ss_api, job_uri)
 
                 if job is None:
@@ -39,7 +39,7 @@ class Executor(Base):
 
                 if job.get('state') in Job.final_states:
                     self.logger.warning(self._log_msg('Job {} in final state will throw it.').format(job_uri))
-                    self._queue.consume()
+                    queue.consume()
                     continue
 
                 self.logger.info(self._log_msg('Executing job "{}" ...'.format(job_uri), name=thread_name))
@@ -48,7 +48,7 @@ class Executor(Base):
                     return_code = self.job_processor(job)
                 except ActionNotImplemented as e:
                     self.logger.exception(self._log_msg('Action "{}" not implemented'.format(str(e))))
-                    self._queue.consume()
+                    queue.consume()
                     # Consume not implemented action to avoid queue to be filled with not implemented actions
                     msg = 'Not implemented action!'.format(job_uri)
                     status_message = '{}: {}'.format(msg, str(e))
@@ -58,13 +58,13 @@ class Executor(Base):
                 except Exception as e:
                     msg = 'Failed to process job {}'.format(job_uri)
                     self.logger.exception(self._log_msg(msg))
-                    self._queue.consume()
+                    queue.consume()
                     status_message = '{}: {}'.format(msg, str(e))
                     job.update_job(state='FAILED', status_message=status_message)
                     time.sleep(0.1)
                 else:
                     job.update_job(state='SUCCESS', return_code=return_code)
-                    self._queue.consume()
+                    queue.consume()
                     self.logger.info(self._log_msg('Job "{}" finished'.format(job_uri), name=thread_name))
             except:
                 self.logger.exception('Fatal error when trying to handle job "{}"'.format(job_uri))
@@ -91,7 +91,7 @@ class Executor(Base):
 
     @override
     def do_work(self):
-        self._queue = self._kz.LockingQueue('/job')
+        #self._queue = self._kz.LockingQueue('/job')
         self.logger.info(self._log_msg('I am executor {}.'.format(self.name)))
 
         for i in range(1, self.args.number_of_thread + 1):
