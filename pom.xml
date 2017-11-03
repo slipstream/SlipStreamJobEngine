@@ -22,19 +22,17 @@
         </license>
     </licenses>
 
-    <!--
     <modules>
         <module>job</module>
         <module>pypi</module>
     </modules>
-    -->
 
     <profiles>
         <profile>
             <id>build-client-rpm</id>
             <activation>
                 <file>
-                    <exists>/usr/local/bin/rpmbuild</exists>
+                    <exists>/usr/bin/rpmbuild</exists>
                 </file>
             </activation>
             <modules>
@@ -49,5 +47,6 @@
         <url>${scm.public}/SlipStreamJobEngine</url>
         <tag>HEAD</tag>
     </scm>
+
 
 </project>

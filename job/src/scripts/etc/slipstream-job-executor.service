@@ -1,0 +1,13 @@
+[Unit]
+Description=SlipStream Job Executor
+After=syslog.target network-online.target
+
+[Service]
+EnvironmentFile=-/etc/default/slipstream-job-executor
+ExecStart=/opt/slipstream/job/sbin/job_executor.py ${DAEMON_ARGS}
+TimeoutStopSec=60
+RestartSec=5
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
