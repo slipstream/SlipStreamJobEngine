@@ -4,7 +4,7 @@ After=syslog.target network-online.target
 
 [Service]
 EnvironmentFile=-/etc/default/slipstream-job-executor
-ExecStart=/opt/slipstream/job/sbin/job_executor.py ${DAEMON_ARGS}
+ExecStart=/opt/slipstream/job/sbin/job_executor.py $DAEMON_ARGS
 TimeoutStopSec=60
 RestartSec=5
 Restart=on-failure
