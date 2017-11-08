@@ -23,6 +23,10 @@ connector_classes = {
 }
 
 
+def remove_prefix(prefix, input_string):
+    return input_string[len(prefix):] if input_string.startswith(prefix) else input_string
+
+
 @classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
@@ -138,11 +142,13 @@ class VirtualMachinesCollectJob(object):
         vm_ram = int(self.connector_instance._vm_get_ram(vm)) or None
         vm_disk = int(self.connector_instance._vm_get_root_disk(vm)) or None
         vm_instanceType = self.connector_instance._vm_get_instance_type(vm) or None
+        filter_str_vdm = 'instanceID="{}" and cloud="{}"'.format(vm_id, self.cloud_name)
         vm_deployment_mappings = self.ss_api.cimi_search(
-            'virtualMachineMappings', filter='instanceID="{}" and cloud="{}"'
-                .format(vm_id, self.cloud_name), first=0, last=0).resources_list
-        if len(vm_deployment_mappings) > 0:
-            vm_deployment_mapping = vm_deployment_mappings[0]
+            'virtualMachineMappings', filter=filter_str_vdm, first=0, last=1)
+        self.logger.debug('Found \'{}\' virtualMachineMappings for following filter_string \'{}\'.'
+                          .format(vm_deployment_mappings.count, filter_str_vdm))
+        if vm_deployment_mappings.count > 0:
+            vm_deployment_mapping = vm_deployment_mappings.resources_list[0].json
         else:
             vm_deployment_mapping = {}
         run_uuid = vm_deployment_mapping.get('runUUID')
@@ -153,20 +159,23 @@ class VirtualMachinesCollectJob(object):
             service_offer = self.ss_api.cimi_get(service_offer_id).json
 
         if not service_offer.get('id'):
-            filter_string = 'resource:type="VM" and connector/href="{}"'.format(self.cloud_name)
+            filter_str_so = 'resource:type="VM" and connector/href="{}"'.format(
+                remove_prefix('connector/', self.cloud_name))
             if vm_cpu:
-                filter_string += ' and resource:vcpu={}'.format(vm_cpu)
+                filter_str_so += ' and resource:vcpu={}'.format(vm_cpu)
             if vm_ram:
-                filter_string += ' and resource:ram={}'.format(vm_ram)
+                filter_str_so += ' and resource:ram={}'.format(vm_ram)
             if vm_disk:
-                filter_string += ' and resource:disk={}'.format(vm_disk)
+                filter_str_so += ' and resource:disk={}'.format(vm_disk)
             if vm_instanceType:
-                filter_string += ' and resource:instanceType="{}"'.format(vm_instanceType)
+                filter_str_so += ' and resource:instanceType="{}"'.format(vm_instanceType)
 
-            service_offers_found = self.ss_api.cimi_search('serviceOffers', filter=filter_string,
-                                                           orderby='price:unitCost', first=0, last=1).resources_list
-            if len(service_offers_found)  > 0:
-                service_offer = service_offers_found[0]
+            service_offers_found = self.ss_api.cimi_search('serviceOffers', filter=filter_str_so,
+                                                           orderby='price:unitCost', first=0, last=1)
+            self.logger.debug('Found \'{}\' service offers for following filter_string \'{}\'.'
+                              .format(service_offers_found.count, filter_str_so))
+            if service_offers_found.count  > 0:
+                service_offer = service_offers_found.resources_list[0].json
             else:
                 service_offer = {'id': 'service-offer/unknown'}
 
