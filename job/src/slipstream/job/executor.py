@@ -7,6 +7,8 @@ from threading import Thread
 
 import time
 
+from elasticsearch import Elasticsearch
+
 from .actions import get_action, ActionNotImplemented
 from .base import Base
 from .job import Job
@@ -18,11 +20,14 @@ from .util import override
 class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
+        self.es = None
 
     @override
     def _set_command_specific_options(self, parser):
         parser.add_argument('--threads', dest='number_of_thread', default=1,
-                            metavar='#', type=int, help='Number of worker threads to start')
+                            metavar='#', type=int, help='Number of worker threads to start (default: 1)')
+        parser.add_argument('--es-hosts-list', dest='es_hosts_list', default=['localhost'],
+                            nargs='+', metavar='HOST', help='Elasticsearch list of hosts (default: [localhost])')
 
     def _process_jobs(self, thread_name):
         queue = self._kz.LockingQueue('/job')
@@ -83,7 +88,7 @@ class Executor(Base):
         self.logger.debug(self._log_msg('Processing job {}'.format(job.job_uri)))
         job.set_state('RUNNING')
         try:
-            return action(job).do_work()
+            return action(self, job).do_work()
         except:
             self.logger.exception(self._log_msg('Job failed while processing it'))
             # TODO: Fail the job or raise something so that the caller fail the job
@@ -92,7 +97,7 @@ class Executor(Base):
     @override
     def do_work(self):
         self.logger.info(self._log_msg('I am executor {}.'.format(self.name)))
-
+        self.es = Elasticsearch(self.args.es_hosts_list)
         for i in range(1, self.args.number_of_thread + 1):
             th_name = 'job_processor_{}'.format(i)
             th = Thread(target=self._process_jobs, name=th_name, args=(th_name,))

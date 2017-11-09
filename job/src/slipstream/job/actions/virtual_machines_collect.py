@@ -30,9 +30,9 @@ def remove_prefix(prefix, input_string):
 @classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
-    def __init__(self, job):
+    def __init__(self, executor, job):
         self.job = job
-        self.ss_api = job.ss_api
+        self.ss_api = executor.ss_api
 
         self._cloud_name = None
         self._cloud_credential = None
