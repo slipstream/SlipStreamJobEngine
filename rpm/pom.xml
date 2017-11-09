@@ -137,7 +137,7 @@
                                 curl "https://bootstrap.pypa.io/get-pip.py" | python
                             fi
                             pip install -Iv kazoo
-                            pip install -Iv 'elasticsearch>=5.0.0,<6.0.0'
+                            pip install -Iv "elasticsearch>=5.0.0,<6.0.0"
                         </script>
                     </postinstallScriptlet>
                 </configuration>
