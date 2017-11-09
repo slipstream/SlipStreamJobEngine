@@ -19,6 +19,7 @@ class JobsCleanupJob(object):
         date_minus_7_days = (datetime.datetime.utcnow() - datetime.timedelta(7)).isoformat() + 'Z'
         filter_jobs_str = '(state="SUCCESS" or state="FAILED") and created<"{}"'.format(date_minus_7_days)
         old_jobs = self.ss_api.cimi_search('jobs', filter=filter_jobs_str)
+        self.logger.info('Number of jobs to be cleaned up: {}'.format(old_jobs.count))
         progress_set_every = int(old_jobs.count / 100) + 1
         progress = 1
         for i, old_job in enumerate(old_jobs.resources_list):
@@ -27,6 +28,7 @@ class JobsCleanupJob(object):
             if i > (progress_set_every * progress):
                 self.job.set_progress(progress)
                 progress += 1
+        self.job.set_status_message('Number of deleted jobs: {}'.format(old_jobs.count))
         self.logger.info('Cleanup of completed jobs finished.')
         return 10000
 
