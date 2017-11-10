@@ -17,6 +17,7 @@ from .util import classlogger
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',
          'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
 
+
 @classlogger
 class Base(object):
     def __init__(self):
@@ -37,7 +38,6 @@ class Base(object):
         logging.getLogger('elasticsearch').setLevel(logging.INFO)
         logging.getLogger('slipstream').setLevel(logging.DEBUG)
         logging.getLogger('urllib3').setLevel(logging.DEBUG)
-
 
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
         required_args = parser.add_argument_group('required named arguments')
@@ -82,7 +82,7 @@ class Base(object):
     def execute(self):
         self.name = self.args.name if self.args.name is not None else names[int(random.uniform(1, len(names) - 1))]
 
-        self.ss_api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure)
+        self.ss_api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure, reauthenticate=True)
         self.ss_api.login_internal(self.args.ss_user, self.args.ss_pass)
 
         self._kz = KazooClient(self.args.zk_hosts)

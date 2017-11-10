@@ -55,7 +55,7 @@ class VirtualMachinesCollectJob(object):
                                        filter='connector/href="{}"'.format(self.cloud_name)).resources_list
 
     def _get_exiting_virtual_machines_for_credential(self):
-        return self.ss_api.cimi_search('virtualMachines',filter='credentials/href="{}" and connector/href="{}"'
+        return self.ss_api.cimi_search('virtualMachines', filter='credentials/href="{}" and connector/href="{}"'
                                        .format(self.cloud_credential['id'], self.cloud_name)).resources_list
 
     @property
@@ -121,14 +121,14 @@ class VirtualMachinesCollectJob(object):
         else:  # staying vm
             cimi_vm_id = self.existing_virtual_machines_connector[vm_id]['id']
             cimi_vm = self._create_cimi_vm(vm_id, vm)
-            credExistAlready = [cred for cred in self.existing_virtual_machines_connector[vm_id]['credentials']
-                                if cred['href'] == self.cloud_credential['id']]
-            if not len(credExistAlready) > 0:
-                updatedCredentials = self.existing_virtual_machines_connector[vm_id]['credentials'][:]
+            cred_exist_already = [cred for cred in self.existing_virtual_machines_connector[vm_id]['credentials']
+                                  if cred['href'] == self.cloud_credential['id']]
+            if not len(cred_exist_already) > 0:
+                updated_credentials = self.existing_virtual_machines_connector[vm_id]['credentials'][:]
                 self.logger.debug('Credential {} will be append to existing VM {}.'
                                   .format(self.cloud_credential['id'], cimi_vm_id))
-                updatedCredentials.append({'href': self.cloud_credential['id']})
-                cimi_vm['credentials'] = updatedCredentials
+                updated_credentials.append({'href': self.cloud_credential['id']})
+                cimi_vm['credentials'] = updated_credentials
             self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
             self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
 
@@ -142,17 +142,20 @@ class VirtualMachinesCollectJob(object):
         vm_ram = int(self.connector_instance._vm_get_ram(vm)) or None
         vm_disk = int(self.connector_instance._vm_get_root_disk(vm)) or None
         vm_instanceType = self.connector_instance._vm_get_instance_type(vm) or None
+
         filter_str_vdm = 'instanceID="{}" and cloud="{}"'.format(vm_id, self.cloud_name)
         vm_deployment_mappings = self.ss_api.cimi_search(
             'virtualMachineMappings', filter=filter_str_vdm, first=0, last=1)
         self.logger.debug('Found \'{}\' virtualMachineMappings for following filter_string \'{}\'.'
                           .format(vm_deployment_mappings.count, filter_str_vdm))
+
         if vm_deployment_mappings.count > 0:
             vm_deployment_mapping = vm_deployment_mappings.resources_list[0].json
         else:
             vm_deployment_mapping = {}
         run_uuid = vm_deployment_mapping.get('runUUID')
         run_owner = vm_deployment_mapping.get('owner')
+
         service_offer_id = vm_deployment_mapping.get('serviceOffer') or None
         service_offer = {}
         if service_offer_id:
@@ -174,7 +177,7 @@ class VirtualMachinesCollectJob(object):
                                                            orderby='price:unitCost', first=0, last=1)
             self.logger.debug('Found \'{}\' service offers for following filter_string \'{}\'.'
                               .format(service_offers_found.count, filter_str_so))
-            if service_offers_found.count  > 0:
+            if service_offers_found.count > 0:
                 service_offer = service_offers_found.resources_list[0].json
             else:
                 service_offer = {'id': 'service-offer/unknown'}
@@ -183,7 +186,6 @@ class VirtualMachinesCollectJob(object):
                    'connector': {'href': self.cloud_name},
                    'instanceID': vm_id,
                    'state': vm_state,
-                   'ip': vm_ip,
                    'credentials': [{'href': self.cloud_credential['id']}],
                    'acl': {'owner': {'type': 'ROLE', 'principal': 'ADMIN'}},
                    'serviceOffer': {'href': service_offer.get('id'),
@@ -196,14 +198,19 @@ class VirtualMachinesCollectJob(object):
                                     'price:freeUnits': service_offer.get('price:freeUnits', ''),
                                     'price:unitCode': service_offer.get('price:unitCode', '')}}
         acl_rules = [{'principal': 'ADMIN', 'right': 'ALL', 'type': 'ROLE'}]
+
         deployment = {}
         if run_uuid:
             deployment = {'href': 'run/{}'.format(run_uuid)}
         if run_owner:
             deployment['user'] = {'href': run_owner}
             acl_rules.append({'principal': run_owner, 'right': 'VIEW', 'type': 'USER'})
+
         if deployment:
             cimi_vm['deployment'] = deployment
+
+        if vm_ip:
+            cimi_vm['ip'] = vm_ip
         cimi_vm['acl']['rules'] = acl_rules
         return cimi_vm
 

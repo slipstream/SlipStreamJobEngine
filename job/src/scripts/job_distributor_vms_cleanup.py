@@ -11,25 +11,25 @@ from slipstream.job.util import override
 
 
 @classlogger
-class CleanupJobsDistributor(Distributor):
-    ACTION_NAME = 'cleanup_jobs'
+class CleanupVmsDistributor(Distributor):
+    ACTION_NAME = 'cleanup_virtual_machines'
 
     def __init__(self):
-        super(CleanupJobsDistributor, self).__init__()
-        self.collect_interval = 86400.0  # 1 day
+        super(CleanupVmsDistributor, self).__init__()
+        self.collect_interval = 3600.0  # 1 hour
 
     @override
     def job_generator(self):
         while True:
-            job = {'action': CleanupJobsDistributor.ACTION_NAME,
-                   'targetResource': {'href': 'job'}}
+            job = {'action': CleanupVmsDistributor.ACTION_NAME,
+                   'targetResource': {'href': 'virtual-machine'}}
             yield job
             time.sleep(self.collect_interval)
 
     @override
     def _get_jobs_type(self):
-        return 'cleanup_jobs'
+        return 'cleanup_virtual_machines'
 
 
 if __name__ == '__main__':
-    main(CleanupJobsDistributor)
+    main(CleanupVmsDistributor)
