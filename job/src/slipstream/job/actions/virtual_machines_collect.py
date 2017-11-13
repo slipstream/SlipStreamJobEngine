@@ -27,6 +27,13 @@ def remove_prefix(prefix, input_string):
     return input_string[len(prefix):] if input_string.startswith(prefix) else input_string
 
 
+def try_extract_number(input):
+    val = None
+    try:
+        val = int(float(input))
+    finally:
+        return val
+
 @classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
@@ -138,9 +145,9 @@ class VirtualMachinesCollectJob(object):
     def _create_cimi_vm(self, vm_id, vm):
         vm_ip = str(self.connector_instance._vm_get_ip_from_list_instances(vm))
         vm_state = str(self.connector_instance._vm_get_state(vm)) or 'Unknown'
-        vm_cpu = int(self.connector_instance._vm_get_cpu(vm)) or None
-        vm_ram = int(self.connector_instance._vm_get_ram(vm)) or None
-        vm_disk = int(self.connector_instance._vm_get_root_disk(vm)) or None
+        vm_cpu = try_extract_number(self.connector_instance._vm_get_cpu(vm))
+        vm_ram = try_extract_number(self.connector_instance._vm_get_ram(vm))
+        vm_disk = try_extract_number(self.connector_instance._vm_get_root_disk(vm))
         vm_instanceType = self.connector_instance._vm_get_instance_type(vm) or None
 
         filter_str_vdm = 'instanceID="{}" and cloud="{}"'.format(vm_id, self.cloud_name)
