@@ -143,14 +143,16 @@ class VirtualMachinesCollectJob(object):
         self.handled_vms_instance_id.add(vm_id)
 
     def _create_cimi_vm(self, vm_id, vm):
-        vm_ip = str(self.connector_instance._vm_get_ip_from_list_instances(vm))
-        vm_state = str(self.connector_instance._vm_get_state(vm)) or 'Unknown'
+        vm_ip = self.connector_instance._vm_get_ip_from_list_instances(vm) or None
+        vm_state = self.connector_instance._vm_get_state(vm) or 'Unknown'
         vm_cpu = try_extract_number(self.connector_instance._vm_get_cpu(vm))
         vm_ram = try_extract_number(self.connector_instance._vm_get_ram(vm))
         vm_disk = try_extract_number(self.connector_instance._vm_get_root_disk(vm))
         vm_instanceType = self.connector_instance._vm_get_instance_type(vm) or None
 
-        filter_str_vdm = 'instanceID="{}" and cloud="{}"'.format(vm_id, self.cloud_name)
+        cloud = remove_prefix('connector/', self.cloud_name)
+
+        filter_str_vdm = 'instanceID="{}" and cloud="{}"'.format(vm_id, cloud)
         vm_deployment_mappings = self.ss_api.cimi_search(
             'virtualMachineMappings', filter=filter_str_vdm, first=0, last=1)
         self.logger.debug('Found \'{}\' virtualMachineMappings for following filter_string \'{}\'.'
@@ -163,14 +165,13 @@ class VirtualMachinesCollectJob(object):
         run_uuid = vm_deployment_mapping.get('runUUID')
         run_owner = vm_deployment_mapping.get('owner')
 
-        service_offer_id = vm_deployment_mapping.get('serviceOffer') or None
+        service_offer_id = vm_deployment_mapping.get('serviceOffer', {}).get('href')
         service_offer = {}
         if service_offer_id:
             service_offer = self.ss_api.cimi_get(service_offer_id).json
 
         if not service_offer.get('id'):
-            filter_str_so = 'resource:type="VM" and connector/href="{}"'.format(
-                remove_prefix('connector/', self.cloud_name))
+            filter_str_so = 'resource:type="VM" and connector/href="{}"'.format(cloud)
             if vm_cpu:
                 filter_str_so += ' and resource:vcpu={}'.format(vm_cpu)
             if vm_ram:
@@ -210,7 +211,7 @@ class VirtualMachinesCollectJob(object):
         if run_uuid:
             deployment = {'href': 'run/{}'.format(run_uuid)}
         if run_owner:
-            deployment['user'] = {'href': run_owner}
+            deployment['user'] = {'href': 'user/{}'.format(run_owner)}
             acl_rules.append({'principal': run_owner, 'right': 'VIEW', 'type': 'USER'})
 
         if deployment:
