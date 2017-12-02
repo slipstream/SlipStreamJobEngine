@@ -34,6 +34,7 @@ def try_extract_number(input):
     finally:
         return val
 
+
 @classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
@@ -201,11 +202,13 @@ class VirtualMachinesCollectJob(object):
                                     'resource:ram': service_offer.get('resource:ram', vm_ram),
                                     'resource:disk': service_offer.get('', vm_disk),
                                     'resource:instanceType': service_offer.get('', vm_instanceType),
-                                    'price:unitCost': service_offer.get('price:unitCost', ''),
-                                    'price:billingPeriodCode': service_offer.get('price:billingPeriodCode', ''),
-                                    'price:freeUnits': service_offer.get('price:freeUnits', ''),
-                                    'price:unitCode': service_offer.get('price:unitCode', '')}}
-        acl_rules = [{'principal': 'ADMIN', 'right': 'ALL', 'type': 'ROLE'}]
+                                    'price:unitCost': service_offer.get('price:unitCost', None),
+                                    'price:billingPeriodCode': service_offer.get('price:billingPeriodCode', None),
+                                    'price:freeUnits': service_offer.get('price:freeUnits', None),
+                                    'price:unitCode': service_offer.get('price:unitCode', None)}}
+        acl_rules = [{'principal': 'ADMIN', 'right': 'ALL', 'type': 'ROLE'},
+                     {'principal': self.cloud_credential['acl']['owner']['principal'], 'right': 'VIEW',
+                      'type': self.cloud_credential['acl']['owner']['type']}]
 
         deployment = {}
         if run_uuid:
