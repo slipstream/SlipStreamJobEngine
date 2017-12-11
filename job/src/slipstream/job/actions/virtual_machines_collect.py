@@ -58,10 +58,6 @@ class VirtualMachinesCollectJob(object):
     def _get_cloud_configuration(self):
         return self.ss_api.cimi_get(self.cloud_name).json
 
-    def _get_exiting_virtual_machines_for_connector(self):
-        return self.ss_api.cimi_search('virtualMachines',
-                                       filter='connector/href="{}"'.format(self.cloud_name)).resources_list
-
     def _get_exiting_virtual_machines_for_credential(self):
         return self.ss_api.cimi_search('virtualMachines', filter='credentials/href="{}" and connector/href="{}"'
                                        .format(self.cloud_credential['id'], self.cloud_name)).resources_list
@@ -101,38 +97,32 @@ class VirtualMachinesCollectJob(object):
         return self._cloud_configuration
 
     @property
-    def existing_virtual_machines_connector(self):
-        if self._existing_virtual_machines_connector is None:
-            vms = self._get_exiting_virtual_machines_for_connector()
-            self._existing_virtual_machines_connector = {vm.json['instanceID']: vm.json for vm in vms}
-        return self._existing_virtual_machines_connector
-
-    @property
     def existing_virtual_machines_credential(self):
         if self._existing_virtual_machines_credential is None:
             vms = self._get_exiting_virtual_machines_for_credential()
             self._existing_virtual_machines_credential = {vm.json['instanceID']: vm.json for vm in vms}
         return self._existing_virtual_machines_credential
 
-    def is_new_vm(self, vm_id):
-        return not self.existing_virtual_machines_connector.get(vm_id)
-
     def handle_vm(self, vm):
         self.logger.debug('Handle following vm: {}'.format(vm))
 
         vm_id = str(self.connector_instance._vm_get_id_from_list_instances(vm))
+        exiting_vms = self.ss_api.cimi_search('virtualMachines', filter='connector/href="{}" and instanceID="{}"'
+                                              .format(self.cloud_name, vm_id))
 
-        if self.is_new_vm(vm_id):
+        if exiting_vms.count == 0: # new vm
             cimi_new_vm = self._create_cimi_vm(vm_id, vm)
             cimi_vm_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
             self.logger.info('Added new VM: {}'.format(cimi_vm_id))
         else:  # staying vm
-            cimi_vm_id = self.existing_virtual_machines_connector[vm_id]['id']
+            if exiting_vms.count > 1:
+                self.logger.warn('VM with following instanceID="{}" is duplicated!'.format(vm_id))
+            cimi_vm_id = exiting_vms.resources_list[0].json['id']
             cimi_vm = self._create_cimi_vm(vm_id, vm)
-            cred_exist_already = [cred for cred in self.existing_virtual_machines_connector[vm_id]['credentials']
+            cred_exist_already = [cred for cred in exiting_vms.resources_list[0].json['credentials']
                                   if cred['href'] == self.cloud_credential['id']]
             if not len(cred_exist_already) > 0:
-                updated_credentials = self.existing_virtual_machines_connector[vm_id]['credentials'][:]
+                updated_credentials = exiting_vms.resources_list[0].json['credentials'][:]
                 self.logger.debug('Credential {} will be append to existing VM {}.'
                                   .format(self.cloud_credential['id'], cimi_vm_id))
                 updated_credentials.append({'href': self.cloud_credential['id']})
