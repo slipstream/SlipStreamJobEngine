@@ -7,6 +7,8 @@ from ..util import classlogger
 
 from ..actions import action
 
+from slipstream.api import SlipStreamError
+
 connector_classes = {
     'azure':                  'slipstream_azure.AzureClientCloud',
     'cloudstack':             'slipstream_cloudstack.CloudStackClientCloud',
@@ -62,6 +64,10 @@ class VirtualMachinesCollectJob(object):
         return self.ss_api.cimi_search('virtualMachines', filter='credentials/href="{}" and connector/href="{}"'
                                        .format(self.cloud_credential['id'], self.cloud_name)).resources_list
 
+    def _get_existing_virtual_machine(self, vm_id):
+        return self.ss_api.cimi_search('virtualMachines', filter='connector/href="{}" and instanceID="{}"'
+                                       .format(self.cloud_name, vm_id))
+
     @property
     def cloud_credential(self):
         if self._cloud_credential is None:
@@ -103,32 +109,46 @@ class VirtualMachinesCollectJob(object):
             self._existing_virtual_machines_credential = {vm.json['instanceID']: vm.json for vm in vms}
         return self._existing_virtual_machines_credential
 
+    def create_vm(self, vm_id, vm):
+        cimi_new_vm = self._create_cimi_vm(vm_id, vm)
+        try:
+            cimi_vm_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
+            self.logger.info('Added new VM: {}'.format(cimi_vm_id))
+        except SlipStreamError as e:
+            if e.response.status_code == 409:
+                cimi_vm_id = e.response.json()['resource-id']
+                # Could happen when VM is beeing created at same time by different thread
+                self.logger.info('VM creation issue due to duplication of {}.')
+                self.update_vm(vm_id, self._get_existing_virtual_machine(vm_id), vm)
+            else:
+                raise e
+        return cimi_vm_id
+
+    def update_vm(self, vm_id, existing_vms, vm):
+        cimi_vm_id = existing_vms.resources_list[0].json['id']
+        cimi_vm = self._create_cimi_vm(vm_id, vm)
+        cred_exist_already = [cred for cred in existing_vms.resources_list[0].json['credentials']
+                              if cred['href'] == self.cloud_credential['id']]
+        if not len(cred_exist_already) > 0:
+            updated_credentials = existing_vms.resources_list[0].json['credentials'][:]
+            self.logger.debug('Credential {} will be append to existing VM {}.'
+                              .format(self.cloud_credential['id'], cimi_vm_id))
+            updated_credentials.append({'href': self.cloud_credential['id']})
+            cimi_vm['credentials'] = updated_credentials
+        self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
+        self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
+        return cimi_vm_id
+
     def handle_vm(self, vm):
         self.logger.debug('Handle following vm: {}'.format(vm))
 
         vm_id = str(self.connector_instance._vm_get_id_from_list_instances(vm))
-        exiting_vms = self.ss_api.cimi_search('virtualMachines', filter='connector/href="{}" and instanceID="{}"'
-                                              .format(self.cloud_name, vm_id))
+        exiting_vms = self._get_existing_virtual_machine(vm_id)
 
-        if exiting_vms.count == 0: # new vm
-            cimi_new_vm = self._create_cimi_vm(vm_id, vm)
-            cimi_vm_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
-            self.logger.info('Added new VM: {}'.format(cimi_vm_id))
+        if exiting_vms.count == 0:  # new vm
+            cimi_vm_id = self.create_vm(vm_id, vm)
         else:  # staying vm
-            if exiting_vms.count > 1:
-                self.logger.warn('VM with following instanceID="{}" is duplicated!'.format(vm_id))
-            cimi_vm_id = exiting_vms.resources_list[0].json['id']
-            cimi_vm = self._create_cimi_vm(vm_id, vm)
-            cred_exist_already = [cred for cred in exiting_vms.resources_list[0].json['credentials']
-                                  if cred['href'] == self.cloud_credential['id']]
-            if not len(cred_exist_already) > 0:
-                updated_credentials = exiting_vms.resources_list[0].json['credentials'][:]
-                self.logger.debug('Credential {} will be append to existing VM {}.'
-                                  .format(self.cloud_credential['id'], cimi_vm_id))
-                updated_credentials.append({'href': self.cloud_credential['id']})
-                cimi_vm['credentials'] = updated_credentials
-            self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
-            self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
+            cimi_vm_id = self.update_vm(vm_id, exiting_vms, vm)
 
         self.job.add_affected_resource(cimi_vm_id)
         self.handled_vms_instance_id.add(vm_id)
