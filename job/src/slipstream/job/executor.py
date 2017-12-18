@@ -14,7 +14,7 @@ from .base import Base
 from .job import Job
 from .util import classlogger
 from .util import override
-
+import stopit
 
 @classlogger
 class Executor(Base):
@@ -39,7 +39,7 @@ class Executor(Base):
 
                 if job is None:
                     self.logger.debug(self._log_msg('No job available. Waiting ...'))
-                    time.sleep(0.1)
+                    self.stop_event.wait(0.1)
                     continue
 
                 if job.get('state') in Job.final_states:
@@ -66,7 +66,7 @@ class Executor(Base):
                     queue.consume()
                     status_message = '{}: {}'.format(msg, str(e))
                     job.update_job(state='FAILED', status_message=status_message)
-                    time.sleep(0.1)
+                    self.stop_event.wait(0.1)
                 else:
                     job.update_job(state='SUCCESS', return_code=return_code)
                     queue.consume()
@@ -88,9 +88,14 @@ class Executor(Base):
         self.logger.debug(self._log_msg('Processing job {}'.format(job.job_uri)))
         job.set_state('RUNNING')
         try:
-            return action(self, job).do_work()
+            action_instance = action(self, job)
+            with stopit.ThreadingTimeout(action_instance.timeout, swallow_exc=False):
+                return action_instance.do_work()
+        except stopit.TimeoutException:
+            self.logger.exception(self._log_msg('Job "{}" timeout during execution.'.format(job.job_uri)))
+            raise Exception('Timeout during execution.')
         except:
-            self.logger.exception(self._log_msg('Job failed while processing it'))
+            self.logger.exception(self._log_msg('Job "{}" failed during processing.'.format(job.job_uri)))
             # TODO: Fail the job or raise something so that the caller fail the job
             raise
 

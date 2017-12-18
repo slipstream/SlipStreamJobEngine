@@ -43,6 +43,7 @@ class VirtualMachinesCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = executor.ss_api
+        self.timeout = 60  # seconds job should terminate in maximum 60 seconds
 
         self._cloud_name = None
         self._cloud_credential = None

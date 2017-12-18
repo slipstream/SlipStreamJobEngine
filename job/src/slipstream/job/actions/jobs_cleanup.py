@@ -12,6 +12,7 @@ class JobsCleanupJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.es = executor.es
+        self.timeout = 30  # seconds job should terminate in maximum 30 seconds
 
     def cleanup_jobs(self):
         self.logger.info('Cleanup of completed jobs started.')
