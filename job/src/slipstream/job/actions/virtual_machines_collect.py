@@ -19,9 +19,7 @@ connector_classes = {
     'opennebula':             'slipstream_opennebula.OpenNebulaClientCloud',
     'openstack':              'slipstream_openstack.OpenStackClientCloud',
     'otc':                    'slipstream_otc.OpenTelekomClientCloud',
-    'softlayer':              'slipstream_nativesoftlayer.NativeSoftLayerClientCloud',
-    'stratuslab':             'slipstream_stratuslab.StratusLabClientCloud',
-    'stratuslabiter':         'slipstream_stratuslab.StratusLabIterClientCloud'
+    'softlayer':              'slipstream_nativesoftlayer.NativeSoftLayerClientCloud'
 }
 
 
