@@ -138,6 +138,7 @@
                             fi
                             pip install -Iv kazoo
                             pip install -Iv "elasticsearch&gt;=5.0.0,&lt;6.0.0"
+                            pip install -Iv stopit
                         </script>
                     </postinstallScriptlet>
                 </configuration>
