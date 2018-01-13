@@ -2,7 +2,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>SlipStreamJobEngine-PyPi</artifactId>
-    <name>SlipStreamJobEngine PyPi</name>
+    <name>SlipStreamJobEngine/pypi</name>
     <packaging>pom</packaging>
     <url>http://sixsq.com/</url>
 

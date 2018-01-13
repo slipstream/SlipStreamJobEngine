@@ -4,7 +4,7 @@
 
     <artifactId>SlipStreamJobEngine-tarball</artifactId>
     <packaging>pom</packaging>
-    <name>SlipStreamJobEngine Tarball</name>
+    <name>SlipStreamJobEngine/job</name>
     <url>http://sixsq.com</url>
 
     <parent>
