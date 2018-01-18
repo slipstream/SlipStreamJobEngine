@@ -25,7 +25,7 @@ def classlogger(c):
         <module_name>.<class_name>
     """
     if len(logging.getLogger().handlers) < 1:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
     setattr(c, 'logger', logging.getLogger('%s.%s' % (c.__module__, c.__name__)))
     return c
 
