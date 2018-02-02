@@ -32,7 +32,7 @@ class Base(object):
         signal.signal(signal.SIGINT, partial(Base.on_exit, self.stop_event))
 
     def _init_args_parser(self):
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
 
         logging.getLogger('kazoo').setLevel(logging.WARN)
         logging.getLogger('elasticsearch').setLevel(logging.WARN)
