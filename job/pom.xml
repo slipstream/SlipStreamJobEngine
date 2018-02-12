@@ -1,84 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>SlipStreamJobEngine-tarball</artifactId>
-    <packaging>pom</packaging>
-    <name>SlipStreamJobEngine/job</name>
-    <url>http://sixsq.com</url>
+  <artifactId>SlipStreamJobEngine-tarball</artifactId>
+  <packaging>pom</packaging>
+  <name>SlipStreamJobEngine/job</name>
+  <url>http://sixsq.com</url>
 
-    <parent>
-        <groupId>com.sixsq.slipstream</groupId>
-        <artifactId>SlipStreamJobEngine</artifactId>
-        <version>3.46-SNAPSHOT</version>
-    </parent>
+  <parent>
+    <groupId>com.sixsq.slipstream</groupId>
+    <artifactId>SlipStreamJobEngine</artifactId>
+    <version>3.46-SNAPSHOT</version>
+  </parent>
 
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-        </license>
-    </licenses>
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
 
-    <build>
-        <plugins>
+  <build>
+    <plugins>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
 
-                <executions>
-                    <execution>
-                        <id>copy-files</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/dist-bundle</outputDirectory>
-                            <overwrite>true</overwrite>
-                            <resources>
-                                <resource>
-                                    <directory>src/</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                                <resource>
-                                    <directory>./</directory>
-                                    <includes>
-                                        <include>setup.py</include>
-                                    </includes>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
+        <executions>
+          <execution>
+            <id>copy-files</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/dist-bundle</outputDirectory>
+              <overwrite>true</overwrite>
+              <resources>
+                <resource>
+                  <directory>src/</directory>
+                  <filtering>true</filtering>
+                </resource>
+                <resource>
+                  <directory>./</directory>
+                  <includes>
+                    <include>setup.py</include>
+                  </includes>
+                  <filtering>true</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
 
-            </plugin>
+      </plugin>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <configuration>
-                    <descriptors>
-                        <descriptor>bundle.xml</descriptor>
-                    </descriptors>
-                </configuration>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <descriptors>
+            <descriptor>bundle.xml</descriptor>
+          </descriptors>
+        </configuration>
 
-                <executions>
+        <executions>
 
-                    <execution>
-                        <id>bundle</id>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                        <phase>package</phase>
-                    </execution>
+          <execution>
+            <id>bundle</id>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <phase>package</phase>
+          </execution>
 
-                </executions>
-            </plugin>
+        </executions>
+      </plugin>
 
-        </plugins>
-    </build>
+    </plugins>
+  </build>
 
 </project>
