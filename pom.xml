@@ -24,7 +24,6 @@
 
     <modules>
         <module>job</module>
-        <module>pypi</module>
     </modules>
 
     <profiles>
