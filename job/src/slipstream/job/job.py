@@ -7,6 +7,12 @@ from slipstream.api import SlipStreamError
 from .util import classlogger
 
 
+class NonexistentJobError(Exception):
+    def __init__(self, reason):
+        super(NonexistentJobError, self).__init__(reason)
+        self.reason = reason
+
+
 @classlogger
 class Job(dict):
 
@@ -16,8 +22,14 @@ class Job(dict):
         self.ss_api = ss_api
         self.job_uri = job_uri
 
-        cimi_job = self.ss_api.cimi_get(job_uri).json
-        dict.__init__(self, cimi_job)
+        try:
+            cimi_job = self.ss_api.cimi_get(job_uri).json
+            dict.__init__(self, cimi_job)
+        except SlipStreamError as e:
+            if e.response.status_code == 404:
+                raise NonexistentJobError(e.reason)
+            else:
+                raise e
 
     def set_progress(self, progress):
         if not isinstance(progress, int):
