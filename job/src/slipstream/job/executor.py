@@ -11,7 +11,7 @@ from elasticsearch import Elasticsearch
 
 from .actions import get_action, ActionNotImplemented
 from .base import Base
-from .job import Job
+from .job import Job, NonexistentJobError
 from .util import classlogger
 from .util import override
 import stopit
@@ -35,15 +35,16 @@ class Executor(Base):
             job_uri = None
             try:
                 job_uri = queue.get()
-                job = Job(self.ss_api, job_uri)
 
-                if job is None:
+                if job_uri is None:
                     self.logger.debug(self._log_msg('No job available. Waiting ...'))
                     self.stop_event.wait(0.1)
                     continue
 
+                job = Job(self.ss_api, job_uri)
+
                 if job.get('state') in Job.final_states:
-                    self.logger.warning(self._log_msg('Job {} in final state will throw it.').format(job_uri))
+                    self.logger.warning(self._log_msg('Job {} in final state; will throw it.').format(job_uri))
                     queue.consume()
                     continue
 
@@ -71,6 +72,10 @@ class Executor(Base):
                     job.update_job(state='SUCCESS', return_code=return_code)
                     queue.consume()
                     self.logger.info(self._log_msg('Job "{}" finished'.format(job_uri), name=thread_name))
+            except NonexistentJobError as e:
+                self.logger.warning(self._log_msg('Job does not exist; removing from queue. Message: {}').format(e.reason))
+                queue.consume()
+                continue
             except:
                 self.logger.exception('Fatal error when trying to handle job "{}"'.format(job_uri))
         self.logger.info('Thread {} properly stopped.'.format(thread_name))
