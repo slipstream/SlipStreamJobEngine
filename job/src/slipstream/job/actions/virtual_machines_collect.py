@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-from ..util import load_module
+from ..util import load_module, random_wait
 from ..util import classlogger
 
 from ..actions import action
@@ -135,7 +135,15 @@ class VirtualMachinesCollectJob(object):
             updated_credentials.append({'href': self.cloud_credential['id']})
             cimi_vm['credentials'] = updated_credentials
         self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
-        self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
+        try:
+            self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
+        except SlipStreamError as e:
+            if e.response.status_code == 409:
+                # Could happen when VM is beeing updated at same time by different thread
+                self.logger.info('VM update conflict of {}.').format(cimi_vm_id)
+                random_wait(0.5, 5.0)
+                self.update_vm(vm_id, self._get_existing_virtual_machine(vm_id), vm)
+                # retry recursion is stopped by the job executor after self.timeout
         return cimi_vm_id
 
     def handle_vm(self, vm):

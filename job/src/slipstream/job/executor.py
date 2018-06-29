@@ -5,8 +5,6 @@ from __future__ import print_function
 import logging
 from threading import Thread
 
-import time
-
 from elasticsearch import Elasticsearch
 
 from .actions import get_action, ActionNotImplemented
