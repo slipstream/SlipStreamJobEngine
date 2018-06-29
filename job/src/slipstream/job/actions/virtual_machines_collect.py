@@ -186,7 +186,10 @@ class VirtualMachinesCollectJob(object):
         service_offer_id = vm_deployment_mapping.get('serviceOffer', {}).get('href')
         service_offer = {}
         if service_offer_id:
-            service_offer = self.ss_api.cimi_get(service_offer_id).json
+            try:
+                service_offer = self.ss_api.cimi_get(service_offer_id).json
+            except SlipStreamError as e:
+                self.logger.warning('Failed to get service offer {}: {}'.format(service_offer_id, str(e)))
 
         if not service_offer.get('id'):
             filter_str_so = 'resource:type="VM" and connector/href="{}"'.format(cloud)
