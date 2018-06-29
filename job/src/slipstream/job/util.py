@@ -8,7 +8,6 @@ import warnings
 from threading import Event
 
 import sys
-import time
 
 PY2 = sys.version_info[0] == 2
 
