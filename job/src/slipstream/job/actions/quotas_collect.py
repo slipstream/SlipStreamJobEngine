@@ -21,10 +21,10 @@ connector_classes = {
     'softlayer':              'slipstream_nativesoftlayer.NativeSoftLayerClientCloud'
 }
 
-get_limits_for = [
-    "max_instances",
-    "max_cpu",
-    "max_memory",
+limits_aggregation = {
+    "max_instances": "count:id",
+    "max_cpu": "sum:serviceOffer/resource:vcpu",
+    "max_memory": "sum:serviceOffer/resource:ram",
     # "max_images",
     # "max_networks",
     # "max_secondary_storage",
@@ -34,7 +34,7 @@ get_limits_for = [
     # "max_volumes",
     # "max_primary_storage",
     # "max_snapshots"
-]
+}
 
 @classlogger
 @action('collect_quotas')
@@ -47,6 +47,30 @@ class QuotasCollectJob(object):
         self._cloud_credential = None
         self._connector_instance = None
         self._cloud_configuration = None
+        self._connector_name = None
+        self._cloud_name = None
+
+    def _get_existing_quota(self, limit):
+        return self.ss_api.cimi_search('quotas', filter='selection="credentials/href=\'{}\'" and aggregation="{}"'
+                                       .format(self.cloud_credential['id'], limits_aggregation[limit]))
+
+    def _generate_rules(self):
+        credential_acl = self.cloud_credential["acl"]
+        non_admin_rules = []
+        if credential_acl["owner"]["principal"].lower() != "admin":
+            non_admin_rules.append({"principal" : credential_acl["owner"]["principal"],
+                "right" : "VIEW",
+                "type" : credential_acl["owner"]["type"]
+            })
+        
+        for rule in credential_acl["rules"]:
+            if rule["principal"].lower() != "admin" and rule not in non_admin_rules:
+                non_admin_rules.append({"principal" : rule["principal"],
+                    "right" : "VIEW",
+                    "type" : rule["type"]
+                })
+
+        return non_admin_rules
 
     @property
     def cloud_credential(self):
@@ -82,34 +106,86 @@ class QuotasCollectJob(object):
                                                                             self.cloud_credential)
         return self._connector_instance
 
-    def handle_quota(self, limits, key):
-        self.logger.debug('Getting quota for API key: {}'.format(key))
+    def create_quota_resource(self, limit_type, limit_value):
+        description = 'limits regarding {}, for credential {} in {}'\
+                    .format(limit_type, self.cloud_credential["id"], self.cloud_name)
+        name = '{} in {}'.format(limit_type, self.cloud_name)
+        resource = "VirtualMachine"
+        aggregation = limits_aggregation[limit_type]
+        limit = limit_value
+        selection = "credentials/href='{}'".format(self.cloud_credential["id"])
+
+        acl = {'owner': {'type': 'ROLE', 'principal': 'ADMIN'}}
+        rules = self._generate_rules()
+        acl.update(rules)
+
+        quota_resource = {'resourceURI': 'http://sixsq.com/slipstream/1/Quota',
+                   'description': description,
+                   'name': name,
+                   'limit': limit,
+                   'resource': resource,
+                   'acl': acl,
+                   'aggregation': aggregation,
+                   'selection': selection
+        }
+        
+        return quota_resource
+
+    def create_quota(self, limit_type, limit_value):
+        cimi_new_quota = self.create_quota_resource(limit_type, limit_type)
+        try:
+            cimi_quota_id = self.ss_api.cimi_add('quotas', cimi_new_quota).json.get('resource-id')
+            self.logger.info('Added new quota: {}'.format(cimi_quota_id))
+        except SlipStreamError as e:
+            if e.response.status_code == 409:
+                cimi_quota_id = e.response.json()['resource-id']
+                self.logger.info('Quota %s creation issue due to %s' % (cimi_quota_id, e))
+            else:
+                raise e
+
+        return cimi_quota_id
+
+    def update_quota(self, limit_type, limit_value, existing_quota):
+        cimi_quota_id = existing_quota.resources_list[0].json['id']
+        cimi_quota_resource = self.create_quota_resource(limit_type, limit_value)
+        # ACLs are always updated
+    
+        self.logger.info('Update existing quota: {}'.format(cimi_quota_id))
+        try:
+            self.ss_api.cimi_edit(cimi_quota_id, cimi_quota_resource)
+        except SlipStreamError as e:
+            if e.response.status_code == 409:
+                # Could happen when quota is beeing updated at same time by different thread
+                self.logger.info('Quota update conflict of {}.').format(cimi_quota_id)
+                random_wait(0.5, 5.0)
+                self.update_quota(limit_type, limit_value, self._get_existing_quota(limit_type))
+                # retry recursion is stopped by the job executor after self.timeout
+
+        return cimi_quota_id
+
+    def handle_quota(self, limits):
+        self.logger.debug('Extracting quotas from limits: {}'.format(limits))
 
         # Quota resource already exists?
-        
-        quotas = {}
-        for limit_type in get_limits_for:
-            quotas[limit_type] = limits[limit_type]
+        for limit, value in limits.iteritems():
+            existing_quota_resource = self._get_existing_quota(limit)
+            if existing_quota_resource.count == 0:  # quota doesn't exist, create it
+                cimi_quota_id = self.create_quota(limit, value)
+            else:  # quota already exists, update it
+                cimi_quota_id = self.update_quota(limit, value, existing_quota_resource)
 
-        vm_id = str(self.connector_instance._vm_get_id_from_list_instances(vm))
-        exiting_vms = self._get_existing_virtual_machine(vm_id)
+        self.job.add_affected_resource(cimi_quota_id)
 
-        if exiting_vms.count == 0:  # new vm
-            cimi_vm_id = self.create_vm(vm_id, vm)
-        else:  # staying vm
-            cimi_vm_id = self.update_vm(vm_id, exiting_vms, vm)
-
-        self.job.add_affected_resource(cimi_vm_id)
-        self.handled_vms_instance_id.add(vm_id)
 
     def get_quotas(self):
-        self.logger.info('Collect virtual machines started for {}.'.format(self.cloud_credential['id']))
+        self.logger.info('Collect quotas started for {}.'.format(self.cloud_credential['id']))
         limits = self.connector_instance.ex_limits()
-        api_key = connector_instance.api_key
 
         self.job.set_progress(50)
+        self.handle_quota(limits)
+        self.job.set_progress(80)
 
-        self.handle_quota(limits, api_key)
+        return 10000
 
 
     def do_work(self):
