@@ -108,6 +108,12 @@ class VirtualMachinesCollectJob(object):
             self._existing_virtual_machines_credential = {vm.json['instanceID']: vm.json for vm in vms}
         return self._existing_virtual_machines_credential
 
+    def cred_exist_already(self, exiting_vm):
+        for cred in exiting_vm['credentials']:
+            if cred['href'] == self.cloud_credential['id']:
+                return True
+        return False
+
     def create_vm(self, vm_id, vm):
         cimi_new_vm = self._create_cimi_vm(vm_id, vm)
         try:
@@ -124,16 +130,19 @@ class VirtualMachinesCollectJob(object):
         return cimi_vm_id
 
     def update_vm(self, vm_id, existing_vms, vm):
-        cimi_vm_id = existing_vms.resources_list[0].json['id']
+        existing_vm = existing_vms.resources_list[0].json
+        cimi_vm_id = existing_vm['id']
+        credentials = existing_vm['credentials'][:]
+
         cimi_vm = self._create_cimi_vm(vm_id, vm)
-        cred_exist_already = [cred for cred in existing_vms.resources_list[0].json['credentials']
-                              if cred['href'] == self.cloud_credential['id']]
-        if not len(cred_exist_already) > 0:
-            updated_credentials = existing_vms.resources_list[0].json['credentials'][:]
+
+        if not self.cred_exist_already(existing_vm):
             self.logger.debug('Credential {} will be append to existing VM {}.'
                               .format(self.cloud_credential['id'], cimi_vm_id))
-            updated_credentials.append({'href': self.cloud_credential['id']})
-            cimi_vm['credentials'] = updated_credentials
+            credentials.append({'href': self.cloud_credential['id']})
+
+        cimi_vm['credentials'] = credentials
+
         self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
         try:
             self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
