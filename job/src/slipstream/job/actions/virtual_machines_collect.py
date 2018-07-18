@@ -136,7 +136,7 @@ class VirtualMachinesCollectJob(object):
 
         cimi_vm = self._create_cimi_vm(vm_id, vm)
 
-        if self.cred_exist_already(existing_vm):
+        if not self.cred_exist_already(existing_vm):
             self.logger.debug('Credential {} will be append to existing VM {}.'
                               .format(self.cloud_credential['id'], cimi_vm_id))
             credentials.append({'href': self.cloud_credential['id']})
