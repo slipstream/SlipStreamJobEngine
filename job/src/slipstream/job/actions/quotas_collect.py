@@ -117,7 +117,7 @@ class QuotasCollectJob(object):
 
         acl = {'owner': {'type': 'ROLE', 'principal': 'ADMIN'}}
         rules = self._generate_rules()
-        acl.update(rules)
+        acl["rules"] = rules
 
         quota_resource = {'resourceURI': 'http://sixsq.com/slipstream/1/Quota',
                    'description': description,
@@ -132,7 +132,7 @@ class QuotasCollectJob(object):
         return quota_resource
 
     def create_quota(self, limit_type, limit_value):
-        cimi_new_quota = self.create_quota_resource(limit_type, limit_type)
+        cimi_new_quota = self.create_quota_resource(limit_type, limit_value)
         try:
             cimi_quota_id = self.ss_api.cimi_add('quotas', cimi_new_quota).json.get('resource-id')
             self.logger.info('Added new quota: {}'.format(cimi_quota_id))
@@ -168,25 +168,24 @@ class QuotasCollectJob(object):
 
         # Quota resource already exists?
         for limit, value in limits.iteritems():
-            existing_quota_resource = self._get_existing_quota(limit)
-            if existing_quota_resource.count == 0:  # quota doesn't exist, create it
-                cimi_quota_id = self.create_quota(limit, value)
-            else:  # quota already exists, update it
-                cimi_quota_id = self.update_quota(limit, value, existing_quota_resource)
+            if limit in limits_aggregation and float(value) >= 0:
+                existing_quota_resource = self._get_existing_quota(limit)
+                if existing_quota_resource.count == 0:  # quota doesn't exist, create it
+                    cimi_quota_id = self.create_quota(limit, value)
+                else:  # quota already exists, update it
+                    cimi_quota_id = self.update_quota(limit, value, existing_quota_resource)
 
         self.job.add_affected_resource(cimi_quota_id)
 
-
     def get_quotas(self):
         self.logger.info('Collect quotas started for {}.'.format(self.cloud_credential['id']))
-        limits = self.connector_instance.ex_limits()
+        limits = self.connector_instance.libcloud_driver.ex_limits()
 
         self.job.set_progress(50)
         self.handle_quota(limits)
         self.job.set_progress(80)
 
         return 10000
-
 
     def do_work(self):
         self.get_quotas()
