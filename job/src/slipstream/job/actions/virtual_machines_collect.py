@@ -149,7 +149,7 @@ class VirtualMachinesCollectJob(object):
             if e.response.status_code == 409:
                 cimi_vm_id = e.response.json()['resource-id']
                 # Could happen when VM is beeing created at same time by different thread
-                self.logger.info('VM creation issue due to duplication of {}.')
+                self.logger.info('VM creation issue due to duplication of {}.'.format(cimi_vm_id))
                 self.update_vm(vm_id, self._get_existing_virtual_machine(vm_id), vm)
             else:
                 raise e
