@@ -2,6 +2,11 @@
 
 from __future__ import print_function
 
+try:
+    from itertools import izip as zip # PY2
+except ImportError:
+    pass # PY3
+
 from ..util import load_module, random_wait
 from ..util import classlogger
 
@@ -114,8 +119,29 @@ class VirtualMachinesCollectJob(object):
                 return True
         return False
 
+    @staticmethod
+    def dict2tuple(d, *keys):
+        return tuple([d[k] for k in keys])
+
+    @classmethod
+    def combine_acl_rules(cls, *rules_args):
+        rule_attrs = ('type', 'principal', 'right')
+        rules_set = {cls.dict2tuple(r, *rule_attrs) for rules in rules_args for r in rules}
+        return [dict(zip(rule_attrs, r)) for r in rules_set]
+
+    def acl_rules_from_managers(self):
+        rules = []
+        managers = self.cloud_credential.get('managers', [])
+        for manager in managers:
+            rules.append(dict(right='VIEW', **manager))
+        return rules
+
     def create_vm(self, vm_id, vm):
         cimi_new_vm = self._create_cimi_vm(vm_id, vm)
+
+        cimi_new_vm['acl']['rules'] = self.combine_acl_rules(cimi_new_vm['acl']['rules'],
+                                                             self.acl_rules_from_managers())
+
         try:
             cimi_vm_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
             self.logger.info('Added new VM: {}'.format(cimi_vm_id))
@@ -135,6 +161,10 @@ class VirtualMachinesCollectJob(object):
         credentials = existing_vm['credentials'][:]
 
         cimi_vm = self._create_cimi_vm(vm_id, vm)
+
+        cimi_vm['acl']['rules'] = self.combine_acl_rules(cimi_vm['acl']['rules'],
+                                                         self.acl_rules_from_managers(),
+                                                         existing_vm['acl']['rules'])
 
         if not self.cred_exist_already(existing_vm):
             self.logger.debug('Credential {} will be append to existing VM {}.'
