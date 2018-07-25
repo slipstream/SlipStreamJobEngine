@@ -8,6 +8,10 @@ ExecStart=/bin/sh -c "exec /opt/slipstream/job/sbin/job_distributor_%i.py $DAEMO
 TimeoutStopSec=10
 RestartSec=5
 Restart=on-failure
+User=slipstream
+Group=slipstream
+StandardOutput=null
+StandardError=null
 
 [Install]
 WantedBy=multi-user.target

@@ -43,9 +43,10 @@ def try_extract_number(input):
 @classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
-    def __init__(self, executor, job):
+    def __init__(self, executor, job, thread_log_fn):
         self.job = job
         self.ss_api = executor.ss_api
+        self.thread_log_fn = thread_log_fn
         self.timeout = 60  # seconds job should terminate in maximum 60 seconds
 
         self._cloud_name = None
@@ -144,12 +145,12 @@ class VirtualMachinesCollectJob(object):
 
         try:
             cimi_vm_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
-            self.logger.info('Added new VM: {}'.format(cimi_vm_id))
+            self.logger.info(self.thread_log_fn('Added new VM: {}.'.format(cimi_vm_id)))
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 cimi_vm_id = e.response.json()['resource-id']
                 # Could happen when VM is beeing created at same time by different thread
-                self.logger.info('VM creation issue due to duplication of {}.'.format(cimi_vm_id))
+                self.logger.info(self.thread_log_fn('VM creation issue due to duplication of {}.'.format(cimi_vm_id)))
                 self.update_vm(vm_id, self._get_existing_virtual_machine(vm_id), vm)
             else:
                 raise e
@@ -167,26 +168,26 @@ class VirtualMachinesCollectJob(object):
                                                          existing_vm['acl']['rules'])
 
         if not self.cred_exist_already(existing_vm):
-            self.logger.debug('Credential {} will be append to existing VM {}.'
-                              .format(self.cloud_credential['id'], cimi_vm_id))
+            self.logger.debug(self.thread_log_fn('Credential {} will be append to existing VM {}.'
+                              .format(self.cloud_credential['id'], cimi_vm_id)))
             credentials.append({'href': self.cloud_credential['id']})
 
         cimi_vm['credentials'] = credentials
 
-        self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
+        self.logger.info(self.thread_log_fn('Update existing VM: {}.'.format(cimi_vm_id)))
         try:
             self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 # Could happen when VM is beeing updated at same time by different thread
-                self.logger.info('VM update conflict of {}.').format(cimi_vm_id)
+                self.logger.info(self.thread_log_fn('VM update conflict of {}.').format(cimi_vm_id))
                 random_wait(0.5, 5.0)
                 self.update_vm(vm_id, self._get_existing_virtual_machine(vm_id), vm)
                 # retry recursion is stopped by the job executor after self.timeout
         return cimi_vm_id
 
     def handle_vm(self, vm):
-        self.logger.debug('Handle following vm: {}'.format(vm))
+        self.logger.debug(self.thread_log_fn('Handle following vm: {}.'.format(vm)))
 
         vm_id = str(self.connector_instance._vm_get_id_from_list_instances(vm))
         exiting_vms = self._get_existing_virtual_machine(vm_id)
@@ -212,8 +213,8 @@ class VirtualMachinesCollectJob(object):
         filter_str_vdm = 'instanceID="{}" and cloud="{}"'.format(vm_id, cloud)
         vm_deployment_mappings = self.ss_api.cimi_search(
             'virtualMachineMappings', filter=filter_str_vdm, first=0, last=1)
-        self.logger.debug('Found \'{}\' virtualMachineMappings for following filter_string \'{}\'.'
-                          .format(vm_deployment_mappings.count, filter_str_vdm))
+        self.logger.debug(self.thread_log_fn('Found \'{}\' virtualMachineMappings for following filter_string \'{}\'.'
+                          .format(vm_deployment_mappings.count, filter_str_vdm)))
 
         if vm_deployment_mappings.count > 0:
             vm_deployment_mapping = vm_deployment_mappings.resources_list[0].json
@@ -228,7 +229,8 @@ class VirtualMachinesCollectJob(object):
             try:
                 service_offer = self.ss_api.cimi_get(service_offer_id).json
             except SlipStreamError as e:
-                self.logger.warning('Failed to get service offer {}: {}'.format(service_offer_id, str(e)))
+                self.logger.warning(self.thread_log_fn(
+                    'Failed to get service offer {}: {}.'.format(service_offer_id, str(e))))
 
         if not service_offer.get('id'):
             filter_str_so = 'resource:type="VM" and connector/href="{}"'.format(cloud)
@@ -243,8 +245,8 @@ class VirtualMachinesCollectJob(object):
 
             service_offers_found = self.ss_api.cimi_search('serviceOffers', filter=filter_str_so,
                                                            orderby='price:unitCost', first=0, last=1)
-            self.logger.debug('Found \'{}\' service offers for following filter_string \'{}\'.'
-                              .format(service_offers_found.count, filter_str_so))
+            self.logger.debug(self.thread_log_fn('Found \'{}\' service offers for following filter_string \'{}\'.'
+                              .format(service_offers_found.count, filter_str_so)))
             if service_offers_found.count > 0:
                 service_offer = service_offers_found.resources_list[0].json
             else:
@@ -289,11 +291,12 @@ class VirtualMachinesCollectJob(object):
 
         for gone_vm_instance_id in gone_vms_ids:
             vm_cimi_id = self.existing_virtual_machines_credential[gone_vm_instance_id]['id']
-            self.logger.info('Deleting gone VM: {}'.format(vm_cimi_id))
+            self.logger.info(self.thread_log_fn('Deleting gone VM: {}.'.format(vm_cimi_id)))
             self.ss_api.cimi_delete(vm_cimi_id)
 
     def collect_virtual_machines(self):
-        self.logger.info('Collect virtual machines started for {}.'.format(self.cloud_credential['id']))
+        self.logger.info(self.thread_log_fn(
+            'Collect virtual machines started for {}.'.format(self.cloud_credential['id'])))
         vms = self.connector_instance.list_instances()
 
         self.job.set_progress(40)
@@ -301,7 +304,7 @@ class VirtualMachinesCollectJob(object):
         if len(vms) > 0:
             map(self.handle_vm, vms)
         else:
-            self.logger.info('No VMs to collect.')
+            self.logger.info(self.thread_log_fn('No VMs to collect.'))
 
         self.job.set_progress(80)
 

@@ -39,9 +39,10 @@ limits_aggregation = {
 @classlogger
 @action('collect_quotas')
 class QuotasCollectJob(object):
-    def __init__(self, executor, job):
+    def __init__(self, executor, job, thread_log_fn):
         self.job = job
         self.ss_api = executor.ss_api
+        self.thread_log_fn = thread_log_fn
         self.timeout = 60  # seconds job should terminate in maximum 60 seconds
 
         self._cloud_credential = None
@@ -135,11 +136,11 @@ class QuotasCollectJob(object):
         cimi_new_quota = self.create_quota_resource(limit_type, limit_value)
         try:
             cimi_quota_id = self.ss_api.cimi_add('quotas', cimi_new_quota).json.get('resource-id')
-            self.logger.info('Added new quota: {}'.format(cimi_quota_id))
+            self.logger.info(self.thread_log_fn('Added new quota: {}.'.format(cimi_quota_id)))
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 cimi_quota_id = e.response.json()['resource-id']
-                self.logger.info('Quota %s creation issue due to %s' % (cimi_quota_id, e))
+                self.logger.info(self.thread_log_fn('Quota {} creation issue due to {}.'.format(cimi_quota_id, e)))
             else:
                 raise e
 
@@ -156,7 +157,7 @@ class QuotasCollectJob(object):
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 # Could happen when quota is beeing updated at same time by different thread
-                self.logger.info('Quota update conflict of {}.').format(cimi_quota_id)
+                self.logger.info(self.thread_log_fn('Quota update conflict of {}.').format(cimi_quota_id))
                 random_wait(0.5, 5.0)
                 self.update_quota(limit_type, limit_value, self._get_existing_quota(limit_type))
                 # retry recursion is stopped by the job executor after self.timeout
@@ -164,7 +165,7 @@ class QuotasCollectJob(object):
         return cimi_quota_id
 
     def handle_quota(self, limits):
-        self.logger.debug('Extracting quotas from limits: {}'.format(limits))
+        self.logger.debug(self.thread_log_fn('Extracting quotas from limits: {}.'.format(limits)))
 
         # Quota resource already exists?
         for limit, value in limits.iteritems():
@@ -178,7 +179,7 @@ class QuotasCollectJob(object):
         self.job.add_affected_resource(cimi_quota_id)
 
     def get_quotas(self):
-        self.logger.info('Collect quotas started for {}.'.format(self.cloud_credential['id']))
+        self.logger.info(self.thread_log_fn('Collect quotas started for {}.'.format(self.cloud_credential['id'])))
         limits = self.connector_instance.libcloud_driver.ex_limits()
 
         self.job.set_progress(50)

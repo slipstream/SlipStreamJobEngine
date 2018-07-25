@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 
+import os
 import logging
 import random
 import warnings
@@ -12,20 +13,23 @@ import sys
 PY2 = sys.version_info[0] == 2
 
 
-def random_wait(secs_min, secs_max):
+def wait(secs):
     e = Event()
-    e.wait(timeout=random.uniform(secs_min, secs_max))
+    e.wait(timeout=secs)
+
+
+def random_wait(secs_min, secs_max):
+    wait(random.uniform(secs_min, secs_max))
 
 
 def classlogger(c):
     """
     A decorator that add a 'log' attribute to the class.
-    The log attribute contain a logger with the name:
-        <module_name>.<class_name>
+    The log attribute contain a logger with the name: <class_name>
     """
     if len(logging.getLogger().handlers) < 1:
         logging.basicConfig(level=logging.INFO)
-    setattr(c, 'logger', logging.getLogger('%s.%s' % (c.__module__, c.__name__)))
+    setattr(c, 'logger', logging.getLogger('{}'.format(c.__name__)))
     return c
 
 
@@ -63,3 +67,9 @@ def load_module(module_name):
         namespace = '.'.join(name.split('.')[:-1])
 
     return __import__(name, fromlist=namespace)
+
+
+def assure_path_exists(path):
+    dir = os.path.dirname(path)
+    if not os.path.exists(dir):
+        os.makedirs(dir)

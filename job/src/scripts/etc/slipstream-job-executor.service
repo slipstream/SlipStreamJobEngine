@@ -8,6 +8,10 @@ ExecStart=/opt/slipstream/job/sbin/job_executor.py $DAEMON_ARGS
 TimeoutStopSec=60
 RestartSec=5
 Restart=on-failure
+User=slipstream
+Group=slipstream
+StandardOutput=null
+StandardError=null
 
 [Install]
 WantedBy=multi-user.target
