@@ -129,11 +129,24 @@ class VirtualMachinesCollectJob(object):
         rules_set = {cls.dict2tuple(r, *rule_attrs) for rules in rules_args for r in rules}
         return [dict(zip(rule_attrs, r)) for r in rules_set]
 
-    def acl_rules_from_managers(self):
+    def get_cloud_credentials(self, credentials_ids):
+        cimi_filter = ' or '.join(['id="{}"'.format(id) for id in credentials_ids])
+        cimi_filter = 'type^="cloud-cred-" and ({})'.format(cimi_filter)
+        cimi_response = self.ss_api.cimi_search('credentials', filter=cimi_filter)
+        return [credential.json for credential in cimi_response.resources()]
+
+    def acl_rules_from_managers(self, extra_cloud_credentials=None):
         rules = []
-        managers = self.cloud_credential.get('managers', [])
-        for manager in managers:
-            rules.append(dict(right='VIEW', **manager))
+
+        cloud_credentials = [self.cloud_credential]
+        if extra_cloud_credentials:
+            cloud_credentials += extra_cloud_credentials
+
+        for cloud_credential in cloud_credentials:
+            managers = cloud_credential.get('managers', [])
+            for manager in managers:
+                rules.append(dict(right='VIEW', **manager))
+
         return rules
 
     def create_vm(self, vm_id, vm):
@@ -162,16 +175,20 @@ class VirtualMachinesCollectJob(object):
 
         cimi_vm = self._create_cimi_vm(vm_id, vm)
 
+        cimi_cloud_credentials = self.get_cloud_credentials([c['href'] for c in credentials])
+
         cimi_vm['acl']['rules'] = self.combine_acl_rules(cimi_vm['acl']['rules'],
-                                                         self.acl_rules_from_managers(),
-                                                         existing_vm['acl']['rules'])
+                                                         self.acl_rules_from_managers(cimi_cloud_credentials))
+
+        # Remove credentials that doesn't exist anymore
+        new_credentials = [{'href': c['id']} for c in cimi_cloud_credentials]
 
         if not self.cred_exist_already(existing_vm):
             self.logger.debug('Credential {} will be append to existing VM {}.'
                               .format(self.cloud_credential['id'], cimi_vm_id))
-            credentials.append({'href': self.cloud_credential['id']})
+            new_credentials.append({'href': self.cloud_credential['id']})
 
-        cimi_vm['credentials'] = credentials
+        cimi_vm['credentials'] = new_credentials
 
         self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
         try:
