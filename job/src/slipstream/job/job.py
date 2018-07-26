@@ -20,9 +20,9 @@ class Job(dict):
         self.nothing_to_do = False
         self.id = None
         self.queue = queue
+        self.ss_api = ss_api
         try:
             self.id = queue.get()
-            self.ss_api = ss_api
             cimi_job = self.get_cimi_job(self.id)
             dict.__init__(self, cimi_job)
             if self.is_in_final_state():
@@ -48,20 +48,20 @@ class Job(dict):
             self.nothing_to_do = True
 
     def get_cimi_job(self, job_uri):
-        for i in range(2):
+        wait_time = 2
+        max_attempt = 2
+        reason = None
+        for attempt in range(max_attempt):
             try:
                 return self.ss_api.cimi_get(job_uri).json
             except SlipStreamError as e:
+                reason = e.reason
                 if e.response.status_code == 404:
-                    if i == 0:  # first attempt, wait and retry perhaps cimi doc not indexed yet
-                        timeout = 1
-                        self.logger.warning('Retrieve of {} failed. Will retry in {}s.'.format(job_uri, timeout))
-                        wait(1)
-                        continue
-                    else:
-                        raise NonexistentJobError(e.reason)
+                    self.logger.warning('Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
+                    wait(wait_time)
                 else:
                     raise e
+        raise NonexistentJobError(reason)
 
     def is_in_final_state(self):
         return self.get('state') in ('SUCCESS', 'FAILED')
