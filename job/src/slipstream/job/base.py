@@ -20,6 +20,7 @@ names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy
 
 LOG_FILENAME = '/var/log/slipstream/job.log'
 
+
 @classlogger
 class Base(object):
     def __init__(self):
@@ -34,7 +35,6 @@ class Base(object):
         signal.signal(signal.SIGINT, partial(Base.on_exit, self.stop_event))
 
     def _init_args_parser(self):
-
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
         required_args = parser.add_argument_group('required named arguments')
 

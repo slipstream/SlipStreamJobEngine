@@ -19,7 +19,7 @@ class Executor(Base):
     def __init__(self):
         super(Executor, self).__init__()
         self.es = None
-        self._init_logger('job_executor.log')
+        self._init_logger('executor.log')
 
     @override
     def _set_command_specific_options(self, parser):
@@ -32,6 +32,7 @@ class Executor(Base):
     def thread_log_msg(thread_name):
         def log_msg(msg):
             return ' {} - {}'.format(thread_name, msg)
+
         return log_msg
 
     def _process_jobs(self, thread_name):
