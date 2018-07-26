@@ -140,6 +140,14 @@
               </sources>
             </mapping>
 
+            <mapping>
+              <directory>/var/log/slipstream/job</directory>
+              <directoryIncluded>true</directoryIncluded>
+              <filemode>755</filemode>
+              <username>slipstream</username>
+              <groupname>slipstream</groupname>
+            </mapping>
+
           </mappings>
 
           <installScriptlet>
@@ -155,7 +163,7 @@
               curl "https://bootstrap.pypa.io/get-pip.py" | python
               fi
               pip install -Iv kazoo
-              pip install -Iv "elasticsearch&gt;=5.0.0,&lt;6.0.0"
+              pip install -Iv elasticsearch
               pip install -Iv stopit
             </script>
           </postinstallScriptlet>

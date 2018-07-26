@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import argparse
 import logging
+from logging.handlers import RotatingFileHandler
 import random
 import sys
 import threading
@@ -12,10 +13,12 @@ from functools import partial
 from kazoo.client import KazooClient
 from slipstream.api import Api
 
-from .util import classlogger
+from .util import classlogger, assure_path_exists
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',
          'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
+
+LOG_FILENAME = '/var/log/slipstream/job.log'
 
 
 @classlogger
@@ -32,13 +35,6 @@ class Base(object):
         signal.signal(signal.SIGINT, partial(Base.on_exit, self.stop_event))
 
     def _init_args_parser(self):
-        logging.basicConfig(level=logging.INFO)
-
-        logging.getLogger('kazoo').setLevel(logging.WARN)
-        logging.getLogger('elasticsearch').setLevel(logging.WARN)
-        logging.getLogger('slipstream').setLevel(logging.INFO)
-        logging.getLogger('urllib3').setLevel(logging.WARN)
-
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
         required_args = parser.add_argument_group('required named arguments')
 
@@ -67,12 +63,26 @@ class Base(object):
     def _set_command_specific_options(self, parser):
         pass
 
+    def _init_logger(self, log_filename):
+        filename = '/var/log/slipstream/job/{}'.format(log_filename)
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+        logging.getLogger('kazoo').setLevel(logging.WARN)
+        logging.getLogger('elasticsearch').setLevel(logging.WARN)
+        logging.getLogger('slipstream').setLevel(logging.INFO)
+        logging.getLogger('urllib3').setLevel(logging.WARN)
+        logging.getLogger('stopit').setLevel(logging.ERROR)
+        assure_path_exists(filename)
+        handler = RotatingFileHandler(filename, mode='a', maxBytes=10485760, backupCount=5)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(threadName)s - %(message)s'))
+        logger.addHandler(handler)
+
     def _log_msg(self, message, name=None):
-        return '{} - {}'.format(name or self.name, message)
+        return ' {} - {}'.format(name or self.name, message)
 
     @staticmethod
     def on_exit(stop_event, signum, frame):
-        print('\n\nExecution interrupted by the user... goodbye!')
+        print('\n\nExecution interrupted by the user!')
         stop_event.set()
         sys.exit(0)
 

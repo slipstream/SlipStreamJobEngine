@@ -3,9 +3,9 @@
 from __future__ import print_function
 
 try:
-    from itertools import izip as zip # PY2
+    from itertools import izip as zip  # PY2
 except ImportError:
-    pass # PY3
+    pass  # PY3
 
 from ..util import load_module, random_wait
 from ..util import classlogger
@@ -15,16 +15,16 @@ from ..actions import action
 from slipstream.api import SlipStreamError
 
 connector_classes = {
-    'azure':                  'slipstream_azure.AzureClientCloud',
-    'cloudstack':             'slipstream_cloudstack.CloudStackClientCloud',
+    'azure': 'slipstream_azure.AzureClientCloud',
+    'cloudstack': 'slipstream_cloudstack.CloudStackClientCloud',
     'cloudstackadvancedzone': 'slipstream_cloudstack.CloudStackAdvancedZoneClientCloud',
-    'ec2':                    'slipstream_ec2.Ec2ClientCloud',
-    'exoscale':               'slipstream_exoscale.ExoscaleClientCloud',
-    'nuvlabox':               'slipstream_nuvlabox.NuvlaBoxClientCloud',
-    'opennebula':             'slipstream_opennebula.OpenNebulaClientCloud',
-    'openstack':              'slipstream_openstack.OpenStackClientCloud',
-    'otc':                    'slipstream_otc.OpenTelekomClientCloud',
-    'softlayer':              'slipstream_nativesoftlayer.NativeSoftLayerClientCloud'
+    'ec2': 'slipstream_ec2.Ec2ClientCloud',
+    'exoscale': 'slipstream_exoscale.ExoscaleClientCloud',
+    'nuvlabox': 'slipstream_nuvlabox.NuvlaBoxClientCloud',
+    'opennebula': 'slipstream_opennebula.OpenNebulaClientCloud',
+    'openstack': 'slipstream_openstack.OpenStackClientCloud',
+    'otc': 'slipstream_otc.OpenTelekomClientCloud',
+    'softlayer': 'slipstream_nativesoftlayer.NativeSoftLayerClientCloud'
 }
 
 
@@ -157,7 +157,7 @@ class VirtualMachinesCollectJob(object):
 
         try:
             cimi_vm_id = self.ss_api.cimi_add('virtualMachines', cimi_new_vm).json.get('resource-id')
-            self.logger.info('Added new VM: {}'.format(cimi_vm_id))
+            self.logger.info('Added new VM: {}.'.format(cimi_vm_id))
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 cimi_vm_id = e.response.json()['resource-id']
@@ -184,13 +184,13 @@ class VirtualMachinesCollectJob(object):
         new_credentials = [{'href': c['id']} for c in cimi_cloud_credentials]
 
         if not self.cred_exist_already(existing_vm):
-            self.logger.debug('Credential {} will be append to existing VM {}.'
-                              .format(self.cloud_credential['id'], cimi_vm_id))
+            self.logger.debug('Credential {} will be append to existing VM {}.'.format(self.cloud_credential['id'],
+                                                                                       cimi_vm_id))
             new_credentials.append({'href': self.cloud_credential['id']})
 
         cimi_vm['credentials'] = new_credentials
 
-        self.logger.info('Update existing VM: {}'.format(cimi_vm_id))
+        self.logger.info('Update existing VM: {}.'.format(cimi_vm_id))
         try:
             self.ss_api.cimi_edit(cimi_vm_id, cimi_vm)
         except SlipStreamError as e:
@@ -203,7 +203,7 @@ class VirtualMachinesCollectJob(object):
         return cimi_vm_id
 
     def handle_vm(self, vm):
-        self.logger.debug('Handle following vm: {}'.format(vm))
+        self.logger.debug('Handle following vm: {}.'.format(vm))
 
         vm_id = str(self.connector_instance._vm_get_id_from_list_instances(vm))
         exiting_vms = self._get_existing_virtual_machine(vm_id)
@@ -245,7 +245,7 @@ class VirtualMachinesCollectJob(object):
             try:
                 service_offer = self.ss_api.cimi_get(service_offer_id).json
             except SlipStreamError as e:
-                self.logger.warning('Failed to get service offer {}: {}'.format(service_offer_id, str(e)))
+                self.logger.warning('Failed to get service offer {}: {}.'.format(service_offer_id, str(e)))
 
         if not service_offer.get('id'):
             filter_str_so = 'resource:type="VM" and connector/href="{}"'.format(cloud)
@@ -306,7 +306,7 @@ class VirtualMachinesCollectJob(object):
 
         for gone_vm_instance_id in gone_vms_ids:
             vm_cimi_id = self.existing_virtual_machines_credential[gone_vm_instance_id]['id']
-            self.logger.info('Deleting gone VM: {}'.format(vm_cimi_id))
+            self.logger.info('Deleting gone VM: {}.'.format(vm_cimi_id))
             self.ss_api.cimi_delete(vm_cimi_id)
 
     def collect_virtual_machines(self):

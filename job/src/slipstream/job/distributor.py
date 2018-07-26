@@ -12,6 +12,7 @@ from .util import classlogger
 class Distributor(Base):
     def __init__(self):
         super(Distributor, self).__init__()
+        self._init_logger('distributor_{}.log'.format(self._get_jobs_type()))
 
     def _job_distributor(self):
         self.logger.info(self._log_msg('I am {} and I have been elected to distribute "{}" jobs'

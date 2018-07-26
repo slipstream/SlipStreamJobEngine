@@ -23,7 +23,7 @@ class JobsCleanupJob(object):
         result = self.es.delete_by_query(index='slipstream-job', doc_type='_doc', body=query_old_completed_jobs)
 
         if result['timed_out'] or result['failures']:
-            error_msg = 'Cleanup of completed jobs have some failures: {}'.format(result)
+            error_msg = 'Cleanup of completed jobs have some failures: {}.'.format(result)
             self.logger.warning(error_msg)
             self.job.set_status_message(error_msg)
         else:

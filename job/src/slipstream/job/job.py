@@ -2,9 +2,9 @@
 
 from __future__ import print_function
 
-from slipstream.api import SlipStreamError
+from slipstream.api import SlipStreamError, ConnectionError
 
-from .util import classlogger
+from .util import classlogger, wait
 
 
 class NonexistentJobError(Exception):
@@ -16,20 +16,55 @@ class NonexistentJobError(Exception):
 @classlogger
 class Job(dict):
 
-    final_states = ['SUCCESS', 'FAILED']
-
-    def __init__(self, ss_api, job_uri):
+    def __init__(self, ss_api, queue):
+        self.nothing_to_do = False
+        self.id = None
+        self.queue = queue
         self.ss_api = ss_api
-        self.job_uri = job_uri
-
         try:
-            cimi_job = self.ss_api.cimi_get(job_uri).json
+            self.id = queue.get()
+            cimi_job = self.get_cimi_job(self.id)
             dict.__init__(self, cimi_job)
-        except SlipStreamError as e:
-            if e.response.status_code == 404:
-                raise NonexistentJobError(e.reason)
-            else:
-                raise e
+            if self.is_in_final_state():
+                result = queue.consume()
+                self.logger.warning('Newly retrieved {} already in final state! ' +
+                                    'Removed from queue: success {}.').format(self.id, result)
+                self.nothing_to_do = True
+            elif self.get('state') == 'RUNNING':
+                # could happen when updating job and cimi server is down! let job actions decide what to do with it.
+                self.logger.warning('Newly retrieved {} in running state!'.format(self.id))
+        except NonexistentJobError as e:
+            result = queue.consume()
+            self.logger.warning('Newly retrieved {} does not exist in cimi; ' +
+                                'Message: {}; Removed from queue: success {}.').format(result, e.reason)
+            self.nothing_to_do = True
+        except:
+            timeout = 120
+            result = queue.release()
+            self.logger.exception('Fatal error when trying to retrieve {}! '.format(self.id) +
+                                  'Put it back in queue: success {}. '.format(result) +
+                                  'Will go back to work after {}s.'.format(timeout))
+            wait(timeout)
+            self.nothing_to_do = True
+
+    def get_cimi_job(self, job_uri):
+        wait_time = 2
+        max_attempt = 2
+        reason = None
+        for attempt in range(max_attempt):
+            try:
+                return self.ss_api.cimi_get(job_uri).json
+            except SlipStreamError as e:
+                reason = e.reason
+                if e.response.status_code == 404:
+                    self.logger.warning('Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
+                    wait(wait_time)
+                else:
+                    raise e
+        raise NonexistentJobError(reason)
+
+    def is_in_final_state(self):
+        return self.get('state') in ('SUCCESS', 'FAILED')
 
     def set_progress(self, progress):
         if not isinstance(progress, int):
@@ -38,10 +73,10 @@ class Job(dict):
         if not (0 <= progress <= 100):
             raise ValueError('progress shoud be between 0 and 100 not {}'.format(progress))
 
-        self._edit_job('progress', progress, raise_on_error=False)
+        self._edit_job('progress', progress)
 
     def set_status_message(self, status_message):
-        self._edit_job('statusMessage', str(status_message), raise_on_error=False)
+        self._edit_job('statusMessage', str(status_message))
 
     def set_return_code(self, return_code):
         if not isinstance(return_code, int):
@@ -86,25 +121,34 @@ class Job(dict):
         if attributes:
             self._edit_job_multi(attributes)
 
-    def _edit_job(self, attribute_name, attribute_value, raise_on_error=True):
+    def consume_when_final_state(self):
+        if self.is_in_final_state():
+            result = self.queue.consume()
+            self.logger.info(
+                'Great, {} is now in final state; Removed from queue: success {}.'.format(self.id, result))
+
+    def _edit_job(self, attribute_name, attribute_value):
         try:
-            response = self.ss_api.cimi_edit(self.job_uri, {attribute_name: attribute_value})
-        except SlipStreamError:
-            self.logger.exception('Failed to update job attribute "{}" for job "{}"'.format(attribute_name,
-                                                                                            self.job_uri))
-            if raise_on_error:
-                raise
+            response = self.ss_api.cimi_edit(self.id, {attribute_name: attribute_value})
+        except (SlipStreamError, ConnectionError):
+            result = self.queue.release()
+            self.logger.exception('Failed to update attribute "{}" for {}! '.format(attribute_name, self.id) +
+                                  'Put it back in queue: success: {}.'.format(result))
         else:
             self.update(response.json)
+            self.consume_when_final_state()
 
     def _edit_job_multi(self, attributes):
         try:
-            response = self.ss_api.cimi_edit(self.job_uri, attributes)
-        except SlipStreamError:
-            self.logger.exception('Failed to update the following attributes "{}" for job {}'.format(attributes,
-                                                                                                     self.job_uri))
+            response = self.ss_api.cimi_edit(self.id, attributes)
+        except (SlipStreamError, ConnectionError):
+            result = self.queue.release()
+            msg = 'Failed to update following attributes "{}" for {}! '.format(attributes, self.id) + \
+                  'Put it back in queue: success: {}.'.format(result)
+            self.logger.exception(msg)
         else:
             self.update(response.json)
+            self.consume_when_final_state()
 
     def __setitem(self, key, value):
         dict.__setitem__(self, key, value)

@@ -36,6 +36,7 @@ limits_aggregation = {
     # "max_snapshots"
 }
 
+
 @classlogger
 @action('collect_quotas')
 class QuotasCollectJob(object):
@@ -58,17 +59,17 @@ class QuotasCollectJob(object):
         credential_acl = self.cloud_credential["acl"]
         non_admin_rules = []
         if credential_acl["owner"]["principal"].lower() != "admin":
-            non_admin_rules.append({"principal" : credential_acl["owner"]["principal"],
-                "right" : "VIEW",
-                "type" : credential_acl["owner"]["type"]
-            })
-        
+            non_admin_rules.append({"principal": credential_acl["owner"]["principal"],
+                                    "right": "VIEW",
+                                    "type": credential_acl["owner"]["type"]
+                                    })
+
         for rule in credential_acl["rules"]:
             if rule["principal"].lower() != "admin" and rule not in non_admin_rules:
-                non_admin_rules.append({"principal" : rule["principal"],
-                    "right" : "VIEW",
-                    "type" : rule["type"]
-                })
+                non_admin_rules.append({"principal": rule["principal"],
+                                        "right": "VIEW",
+                                        "type": rule["type"]
+                                        })
 
         return non_admin_rules
 
@@ -89,7 +90,7 @@ class QuotasCollectJob(object):
     @property
     def connector(self):
         return load_module(connector_classes[self.connector_name])
-    
+
     @property
     def cloud_configuration(self):
         if self._cloud_configuration is None:
@@ -107,8 +108,8 @@ class QuotasCollectJob(object):
         return self._connector_instance
 
     def create_quota_resource(self, limit_type, limit_value):
-        description = 'limits regarding {}, for credential {} in {}'\
-                    .format(limit_type, self.cloud_credential["id"], self.cloud_name)
+        description = 'limits regarding {}, for credential {} in {}' \
+            .format(limit_type, self.cloud_credential["id"], self.cloud_name)
         name = '{} in {}'.format(limit_type, self.cloud_name)
         resource = "VirtualMachine"
         aggregation = limits_aggregation[limit_type]
@@ -120,26 +121,26 @@ class QuotasCollectJob(object):
         acl["rules"] = rules
 
         quota_resource = {'resourceURI': 'http://sixsq.com/slipstream/1/Quota',
-                   'description': description,
-                   'name': name,
-                   'limit': limit,
-                   'resource': resource,
-                   'acl': acl,
-                   'aggregation': aggregation,
-                   'selection': selection
-        }
-        
+                          'description': description,
+                          'name': name,
+                          'limit': limit,
+                          'resource': resource,
+                          'acl': acl,
+                          'aggregation': aggregation,
+                          'selection': selection
+                          }
+
         return quota_resource
 
     def create_quota(self, limit_type, limit_value):
         cimi_new_quota = self.create_quota_resource(limit_type, limit_value)
         try:
             cimi_quota_id = self.ss_api.cimi_add('quotas', cimi_new_quota).json.get('resource-id')
-            self.logger.info('Added new quota: {}'.format(cimi_quota_id))
+            self.logger.info('Added new quota: {}.'.format(cimi_quota_id))
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 cimi_quota_id = e.response.json()['resource-id']
-                self.logger.info('Quota %s creation issue due to %s' % (cimi_quota_id, e))
+                self.logger.info('Quota {} creation issue due to {}.'.format(cimi_quota_id, e))
             else:
                 raise e
 
@@ -149,7 +150,7 @@ class QuotasCollectJob(object):
         cimi_quota_id = existing_quota.resources_list[0].json['id']
         cimi_quota_resource = self.create_quota_resource(limit_type, limit_value)
         # ACLs are always updated
-    
+
         self.logger.info('Update existing quota: {}'.format(cimi_quota_id))
         try:
             self.ss_api.cimi_edit(cimi_quota_id, cimi_quota_resource)
@@ -164,7 +165,7 @@ class QuotasCollectJob(object):
         return cimi_quota_id
 
     def handle_quota(self, limits):
-        self.logger.debug('Extracting quotas from limits: {}'.format(limits))
+        self.logger.debug('Extracting quotas from limits: {}.'.format(limits))
 
         # Quota resource already exists?
         for limit, value in limits.iteritems():

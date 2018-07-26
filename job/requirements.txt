@@ -1,4 +1,4 @@
 slipstream-api
 kazoo
 stopit
-elasticsearch>=5.0.0,<6.0.0
+elasticsearch

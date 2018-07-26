@@ -24,7 +24,7 @@ class NuvlaboxStateSnapshotsCleanupJob(object):
                                          doc_type='_doc', body=query_old_snapshots)
 
         if result['timed_out'] or result['failures']:
-            error_msg = 'Cleanup of old nuvlabox state snapshots have some failures: {}'.format(result)
+            error_msg = 'Cleanup of old nuvlabox state snapshots have some failures: {}.'.format(result)
             self.logger.warning(error_msg)
             self.job.set_status_message(error_msg)
         else:
