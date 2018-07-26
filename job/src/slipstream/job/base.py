@@ -74,7 +74,7 @@ class Base(object):
         logging.getLogger('stopit').setLevel(logging.ERROR)
         assure_path_exists(filename)
         handler = RotatingFileHandler(filename, mode='a', maxBytes=10485760, backupCount=5)
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(threadName)s - %(message)s'))
         logger.addHandler(handler)
 
     def _log_msg(self, message, name=None):

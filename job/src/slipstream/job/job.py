@@ -16,11 +16,10 @@ class NonexistentJobError(Exception):
 @classlogger
 class Job(dict):
 
-    def __init__(self, ss_api, queue, thread_log_fn):
+    def __init__(self, ss_api, queue):
         self.nothing_to_do = False
         self.id = None
         self.queue = queue
-        self.thread_log_fn = thread_log_fn
         try:
             self.id = queue.get()
             self.ss_api = ss_api
@@ -28,23 +27,23 @@ class Job(dict):
             dict.__init__(self, cimi_job)
             if self.is_in_final_state():
                 result = queue.consume()
-                self.logger.warning(thread_log_fn('Newly retrieved {} already in final state! ' +
-                                                  'Removed from queue: success {}.').format(self.id, result))
+                self.logger.warning('Newly retrieved {} already in final state! ' +
+                                    'Removed from queue: success {}.').format(self.id, result)
                 self.nothing_to_do = True
             elif self.get('state') == 'RUNNING':
                 # could happen when updating job and cimi server is down! let job actions decide what to do with it.
-                self.logger.warning(thread_log_fn('Newly retrieved {} in running state!').format(self.id))
+                self.logger.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
             result = queue.consume()
-            self.logger.warning(thread_log_fn('Newly retrieved {} does not exist in cimi; ' +
-                                              'Message: {}; Removed from queue: success {}.').format(result, e.reason))
+            self.logger.warning('Newly retrieved {} does not exist in cimi; ' +
+                                'Message: {}; Removed from queue: success {}.').format(result, e.reason)
             self.nothing_to_do = True
         except:
             timeout = 120
             result = queue.release()
-            self.logger.exception(thread_log_fn('Fatal error when trying to retrieve {}! '.format(self.id) +
-                                                'Put it back in queue: success {}. '.format(result) +
-                                                'Will go back to work after {}s.'.format(timeout)))
+            self.logger.exception('Fatal error when trying to retrieve {}! '.format(self.id) +
+                                  'Put it back in queue: success {}. '.format(result) +
+                                  'Will go back to work after {}s.'.format(timeout))
             wait(timeout)
             self.nothing_to_do = True
 
@@ -56,8 +55,7 @@ class Job(dict):
                 if e.response.status_code == 404:
                     if i == 0:  # first attempt, wait and retry perhaps cimi doc not indexed yet
                         timeout = 1
-                        self.logger.warning(self.thread_log_fn(
-                            'Retrieve of {} failed. Will retry in {}s.'.format(job_uri, timeout)))
+                        self.logger.warning('Retrieve of {} failed. Will retry in {}s.'.format(job_uri, timeout))
                         wait(1)
                         continue
                     else:
@@ -126,17 +124,16 @@ class Job(dict):
     def consume_when_final_state(self):
         if self.is_in_final_state():
             result = self.queue.consume()
-            self.logger.info(self.thread_log_fn(
-                'Great, {} is now in final state; Removed from queue: success {}.'.format(self.id, result)))
+            self.logger.info(
+                'Great, {} is now in final state; Removed from queue: success {}.'.format(self.id, result))
 
     def _edit_job(self, attribute_name, attribute_value):
         try:
             response = self.ss_api.cimi_edit(self.id, {attribute_name: attribute_value})
         except (SlipStreamError, ConnectionError):
             result = self.queue.release()
-            self.logger.exception(self.thread_log_fn(
-                'Failed to update attribute "{}" for {}! '.format(attribute_name, self.id) +
-                'Put it back in queue: success: {}.'.format(result)))
+            self.logger.exception('Failed to update attribute "{}" for {}! '.format(attribute_name, self.id) +
+                                  'Put it back in queue: success: {}.'.format(result))
         else:
             self.update(response.json)
             self.consume_when_final_state()
@@ -148,7 +145,7 @@ class Job(dict):
             result = self.queue.release()
             msg = 'Failed to update following attributes "{}" for {}! '.format(attributes, self.id) + \
                   'Put it back in queue: success: {}.'.format(result)
-            self.logger.exception(self.thread_log_fn(msg))
+            self.logger.exception(msg)
         else:
             self.update(response.json)
             self.consume_when_final_state()

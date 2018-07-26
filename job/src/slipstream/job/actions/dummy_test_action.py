@@ -9,10 +9,9 @@ from ..actions import action
 @classlogger
 @action('dummy_test_action')
 class DummyTestActionJob(object):
-    def __init__(self, executor, job, thread_log_fn):
+    def __init__(self, executor, job):
         self.job = job
         self.ss_api = executor.ss_api
-        self.thread_log_fn = thread_log_fn
         self.timeout = 15  # seconds job should terminate in maximum 60 seconds
 
     @staticmethod
