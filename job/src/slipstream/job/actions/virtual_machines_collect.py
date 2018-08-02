@@ -254,7 +254,7 @@ class VirtualMachinesCollectJob(object):
             if vm_ram:
                 filter_str_so += ' and resource:ram={}'.format(vm_ram)
             if vm_disk:
-                filter_str_so += ' and resource:disk={}'.format(vm_disk)
+                filter_str_so += ' and resource:disk>={}'.format(vm_disk)
             if vm_instanceType:
                 filter_str_so += ' and resource:instanceType="{}"'.format(vm_instanceType)
 
