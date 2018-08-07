@@ -6,6 +6,7 @@ import logging
 from threading import Thread
 
 from elasticsearch import Elasticsearch
+from slipstream.api import Api
 
 from .actions import get_action, ActionNotImplemented
 from .base import Base
@@ -30,9 +31,11 @@ class Executor(Base):
 
     def _process_jobs(self):
         queue = self._kz.LockingQueue('/job')
+        api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure, reauthenticate=True)
+        api.login_internal(self.args.ss_user, self.args.ss_pass)
 
         while not self.stop_event.is_set():
-            job = Job(self.ss_api, queue)
+            job = Job(api, queue)
 
             if job.nothing_to_do:
                 continue
