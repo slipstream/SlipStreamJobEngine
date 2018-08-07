@@ -10,7 +10,7 @@ from elasticsearch import Elasticsearch
 from .actions import get_action, ActionNotImplemented
 from .base import Base
 from .job import Job
-from .util import classlogger, override, wait
+from .util import classlogger, override
 import stopit
 
 
