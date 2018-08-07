@@ -55,3 +55,16 @@ scripts/job_distributor_dummy_test_action.py.
 
 Check `/var/log/slipstream/log/` folder. It's configured to rotate the files by size (~10MB) and to backup 5 times.
 
+
+## Debugging
+
+You can get a trace-back of all running threads in the log by sending a `SIGUSR1` signal to the process
+
+Example:
+`kill -s SIGUSR1 $PID`
+
+or
+
+`systemctl kill -s SIGUSR1 slipstream-job-executor.service`
+
+`systemctl kill -s SIGUSR1 slipstream-job-distributor@<...>.service`

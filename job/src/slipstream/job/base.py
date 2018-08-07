@@ -13,7 +13,7 @@ from functools import partial
 from kazoo.client import KazooClient
 from slipstream.api import Api
 
-from .util import classlogger, assure_path_exists
+from .util import classlogger, assure_path_exists, print_stack
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',
          'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
@@ -33,6 +33,7 @@ class Base(object):
 
         signal.signal(signal.SIGTERM, partial(Base.on_exit, self.stop_event))
         signal.signal(signal.SIGINT, partial(Base.on_exit, self.stop_event))
+        signal.signal(signal.SIGUSR1, print_stack)
 
     def _init_args_parser(self):
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
@@ -100,7 +101,8 @@ class Base(object):
 
         self.do_work()
 
-        signal.pause()
+        while True:
+            signal.pause()
 
 
 def main(command):
