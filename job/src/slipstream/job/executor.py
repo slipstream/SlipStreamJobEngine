@@ -10,7 +10,7 @@ from elasticsearch import Elasticsearch
 from .actions import get_action, ActionNotImplemented
 from .base import Base
 from .job import Job
-from .util import classlogger, override
+from .util import classlogger, override, wait
 import stopit
 
 
@@ -51,7 +51,6 @@ class Executor(Base):
                 self.logger.exception('Failed to process {}.'.format(job.id))
                 status_message = '{}'.format(str(e))
                 job.update_job(state='FAILED', status_message=status_message)
-                self.stop_event.wait(0.1)
             else:
                 job.update_job(state='SUCCESS', return_code=return_code)
                 self.logger.info('Successfully finished {}.'.format(job.id))
