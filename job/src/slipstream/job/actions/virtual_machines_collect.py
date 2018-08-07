@@ -218,7 +218,7 @@ class VirtualMachinesCollectJob(object):
 
     def _create_cimi_vm(self, vm_id, vm):
         vm_ip = self.connector_instance._vm_get_ip_from_list_instances(vm) or None
-        vm_state = self.connector_instance._vm_get_state(vm) or 'Unknown'
+        vm_state = self.connector_instance._vm_get_state(vm) or 'unknown'
         vm_cpu = try_extract_number(self.connector_instance._vm_get_cpu(vm))
         vm_ram = try_extract_number(self.connector_instance._vm_get_ram(vm))
         vm_disk = try_extract_number(self.connector_instance._vm_get_root_disk(vm))
@@ -270,7 +270,7 @@ class VirtualMachinesCollectJob(object):
         cimi_vm = {'resourceURI': 'http://sixsq.com/slipstream/1/VirtualMachine',
                    'connector': {'href': self.cloud_name},
                    'instanceID': vm_id,
-                   'state': vm_state,
+                   'state': vm_state.lower(),
                    'credentials': [{'href': self.cloud_credential['id']}],
                    'acl': {'owner': {'type': 'ROLE', 'principal': 'ADMIN'}},
                    'serviceOffer': {'href': service_offer.get('id'),

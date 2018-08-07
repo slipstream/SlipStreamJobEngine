@@ -3,10 +3,12 @@
 from __future__ import print_function
 
 import os
-import logging
 import random
 import warnings
-from threading import Event
+import threading
+import traceback
+import logging
+import pprint
 
 import sys
 
@@ -14,7 +16,7 @@ PY2 = sys.version_info[0] == 2
 
 
 def wait(secs):
-    e = Event()
+    e = threading.Event()
     e.wait(timeout=secs)
 
 
@@ -33,9 +35,10 @@ def classlogger(c):
     return c
 
 
-def print_stack():
-    import traceback
-    traceback.print_stack()
+def print_stack(signum, frame):
+    for th in threading.enumerate():
+        trace = traceback.extract_stack(sys._current_frames()[th.ident])
+        logging.getLogger().error('thread {}:\n{}'.format(th.getName(), pprint.pformat(trace)))
 
 
 class InterruptException(Exception):
