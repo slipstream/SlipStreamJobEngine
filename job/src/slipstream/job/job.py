@@ -35,8 +35,8 @@ class Job(dict):
                 self.logger.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
             result = queue.consume()
-            self.logger.warning('Newly retrieved {} does not exist in cimi; ' +
-                                'Message: {}; Removed from queue: success {}.').format(result, e.reason)
+            self.logger.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
+                                'Message: {}; Removed from queue: success {}.'.format(result, e.reason))
             self.nothing_to_do = True
         except:
             timeout = 120
