@@ -28,18 +28,6 @@ connector_classes = {
 }
 
 
-def remove_prefix(prefix, input_string):
-    return input_string[len(prefix):] if input_string.startswith(prefix) else input_string
-
-
-def try_extract_number(input):
-    val = None
-    try:
-        val = int(float(input))
-    finally:
-        return val
-
-
 @classlogger
 @action('start_deployment')
 class DeploymentStartJob(object):
@@ -100,7 +88,7 @@ class DeploymentStartJob(object):
         if not hasattr(connector, 'instantiate_from_cimi'):
             raise NotImplementedError('The connector "{}" is not compatible with the start_deployment job'
                                       .format(cloud_configuration['cloudServiceType']))
-        return connector.instantiate_from_cimi(cloud_configuration, cloud_credential),\
+        return connector.instantiate_from_cimi(cloud_configuration, cloud_credential), \
                connector.get_user_info_from_cimi(cloud_configuration, cloud_credential)
 
     @property
@@ -115,21 +103,6 @@ class DeploymentStartJob(object):
             self._user = self._get_user()
         return self._user
 
-    # @property
-    # def cloud_configuration(self):
-    #     if self._cloud_configuration is None:
-    #         self._cloud_configuration = self._get_cloud_configuration()
-    #     return self._cloud_configuration
-
-    # def get_cloud_credentials(self, credentials_ids):
-    #     cimi_filter = ' or '.join(['id="{}"'.format(id) for id in credentials_ids])
-    #     cimi_filter = 'type^="cloud-cred-" and ({})'.format(cimi_filter)
-    #     cimi_response = self.ss_api.cimi_search('credentials', filter=cimi_filter)
-    #     return [credential.json for credential in cimi_response.resources()]
-
-    def get_user(self, user):
-        return
-
     def generate_key_secret(self):
         # FIXME: this will create an api key secret with limited scope to the deployment and deployment parameters.
         # the key and secret will be stored in deployment. It will have a special role which allow creation of reports
@@ -140,7 +113,7 @@ class DeploymentStartJob(object):
         #                                'acl': {'owner': {'principal': self.user,
         #                                                  'type': 'USER'}}}}
         # self.ss_api.cimi_add('credentials', data)
-        return 'credential/3996f7c8-27ae-480b-847c-99992536c320', 'V2UQsD.LDQBsm.hTKdiB.tw9vXt.pcJMYq'
+        return 'credential/5449cb4d-fb35-401b-a064-fba89d524a90', 'd7NQ3w.Jt9YLZ.Hr8vV2.hK4KyJ.qvLJcQ'
 
     def create_deployment_parameter(self, node_id, user, parm_name, param_value=None):
         parameter = {'name': parm_name,
@@ -213,7 +186,7 @@ class DeploymentStartJob(object):
         # I should update bootstrap file to support set abort message if error occur
         # I should update client with new workflow to comunicate with new deployment resource
 
-        cloud_credential_id = 'credential/75b0c656-42ff-430b-858d-6f083e70795e'
+        cloud_credential_id = 'credential/ecab1faf-32f6-4a76-8c2b-f93df4c4f75c'
         cloud_credential = self.ss_api.cimi_get(cloud_credential_id).json
         cloud_name = cloud_credential['connector']['href']
         cloud_configuration = self.ss_api.cimi_get(cloud_name).json
@@ -221,13 +194,15 @@ class DeploymentStartJob(object):
         connector_instance, user_info = \
             DeploymentStartJob.connector_instance_userinfo(cloud_configuration, cloud_credential)
 
-        deployment_ss_key, deployment_ss_secret = self.generate_key_secret()
-
         user_ssh_pub_keys = 'ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAnRxAn1QdEdHEjgerzI3aBBgezjjG4Zv3FxVRgBuzgog2Px8Zti6g' \
-                           '74bjs+iNgabduLZCskc87ZHOb97iDktefrOMrucBqkWVvnC5gFxI4lD8EhrIS0MyqIHm+Flbf2Sr6gjcqCttT1bX' \
-                           '7s9vL3LMNw9WZ+6brsufBVg3rexjk2GvbqHcmWV98I5v+KIoSCUwmN2o+ENTL8qWCOO8JPqHmyF9qJYudEC1RU0a' \
-                           'lUcA5UVEJYeGsX13unhNEDeZIvAObAh/uIhA6V7GPg803JGwmOClQ0BIPVBudv2mHHQFTms/6NBqK10v5bEGO47N' \
-                           'kJb8c+K8sePufd71PxSu77MH4Q== khaled'
+                            '74bjs+iNgabduLZCskc87ZHOb97iDktefrOMrucBqkWVvnC5gFxI4lD8EhrIS0MyqIHm+Flbf2Sr6gjcqCttT1bX' \
+                            '7s9vL3LMNw9WZ+6brsufBVg3rexjk2GvbqHcmWV98I5v+KIoSCUwmN2o+ENTL8qWCOO8JPqHmyF9qJYudEC1RU0a' \
+                            'lUcA5UVEJYeGsX13unhNEDeZIvAObAh/uIhA6V7GPg803JGwmOClQ0BIPVBudv2mHHQFTms/6NBqK10v5bEGO47N' \
+                            'kJb8c+K8sePufd71PxSu77MH4Q== khaled'
+
+        user_info.set_public_keys(user_ssh_pub_keys)
+
+        deployment_ss_key, deployment_ss_secret = self.generate_key_secret()
 
         deployment_owner = self.deployment['acl']['owner']['principal']
 
@@ -235,22 +210,23 @@ class DeploymentStartJob(object):
 
         node_instance_name = 'machine-test'
 
-        node1 = NodeInstance({'{}.disk'.format(cloud_instance_name): str(module['content']['disk']),
-                              '{}.security.groups'.format(cloud_instance_name): 'slipstream_managed',
-                              '{}.networks'.format(cloud_instance_name): '',
-                              '{}.instance.type'.format(cloud_instance_name): 'Micro',
-                              # search for service offer should occur when creating the deployment template
-                              'image.platform': 'linux',
-                              'network': module['content']['networkType'],
-                              'cloudservice': cloud_instance_name,
-                              'image.id': module['content']['imageIDs'][cloud_instance_name],
-                              'image.imageId': module['content']['imageIDs'][cloud_instance_name],
-                              'node_instance_name': node_instance_name,
-                              'image.loginUser': 'ubuntu'})
+        node1 = NodeInstance({
+            '{}.disk'.format(cloud_instance_name): str(module['content']['disk']),
+            '{}.security.groups'.format(cloud_instance_name): 'slipstream_managed',
+            '{}.networks'.format(cloud_instance_name): '',
+            '{}.instance.type'.format(cloud_instance_name): 'Micro',
+            # search for service offer should occur when creating the deployment template
+            'image.platform': 'linux',
+            'network': module['content']['networkType'],
+            'cloudservice': cloud_instance_name,
+            'image.id': module['content']['imageIDs'][cloud_instance_name],
+            'image.imageId': module['content']['imageIDs'][cloud_instance_name],
+            'node_instance_name': node_instance_name,
+            'image.loginUser': 'ubuntu'})
 
         node1_context = {'SLIPSTREAM_DIID': self.deployment.get('id'),
                          'SLIPSTREAM_SERVICEURL': self.slipstream_configuration.get('serviceURL'),
-                         'SLIPSTREAM_NODE_INSTANCE_NAME': 'node.1',
+                         'SLIPSTREAM_NODE_INSTANCE_NAME': node_instance_name,
                          'SLIPSTREAM_CLOUD': 'exoscale-ch-gva',
                          'SLIPSTREAM_BUNDLE_URL': self.slipstream_configuration.get('clientURL'),
                          'SLIPSTREAM_BOOTSTRAP_BIN': self.slipstream_configuration.get('clientBootstrapURL'),
@@ -272,8 +248,18 @@ class DeploymentStartJob(object):
                                              NodeDecorator.CLOUD_NODE_ID_KEY, node.get_cloud_node_id())
             self.create_deployment_parameter(node_name, deployment_owner,
                                              NodeDecorator.CLOUD_NODE_IP_KEY, node.get_cloud_node_ip())
-            self.create_deployment_parameter(node_name, deployment_owner,
-                                             NodeDecorator.CLOUD_NODE_PASSWORD_KEY, node.get_cloud_node_password())
+            if node.get_cloud_node_ssh_url():
+                self.create_deployment_parameter(node_name, deployment_owner,
+                                                 NodeDecorator.CLOUD_NODE_SSH_URL_KEY,
+                                                 node.get_cloud_node_ssh_url())
+            if node.get_cloud_node_ssh_password():
+                self.create_deployment_parameter(node_name, deployment_owner,
+                                                 NodeDecorator.CLOUD_NODE_SSH_PASSWORD_KEY,
+                                                 node.get_cloud_node_ssh_password())
+            if node.get_cloud_node_ssh_keypair_name():
+                self.create_deployment_parameter(node_name, deployment_owner,
+                                                 NodeDecorator.CLOUD_NODE_SSH_KEYPAIR_NAME_KEY,
+                                                 node.get_cloud_node_ssh_keypair_name())
 
         self.ss_api.cimi_edit(self.deployment['id'], {'state': 'STARTED'})
 
