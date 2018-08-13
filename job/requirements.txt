@@ -2,3 +2,4 @@ slipstream-api
 kazoo
 stopit
 elasticsearch
+boto3
