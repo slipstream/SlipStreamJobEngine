@@ -8,7 +8,7 @@ try:
 except ImportError:
     pass  # PY3
 
-from ..util import load_module, random_wait
+from ..util import random_wait
 from ..util import classlogger
 
 from ..actions import action
@@ -28,31 +28,17 @@ from slipstream.api import SlipStreamError
 #     'softlayer': 'slipstream_nativesoftlayer.NativeSoftLayerClientCloud'
 # }
 
-
-def remove_prefix(prefix, input_string):
-    return input_string[len(prefix):] if input_string.startswith(prefix) else input_string
-
-
-def try_extract_number(input):
-    val = None
-    try:
-        val = int(float(input))
-    finally:
-        return val
-
-
 @classlogger
 @action('collect_storage_buckets')
 class StorageBucketsCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = executor.ss_api
-        self.timeout = 60  # seconds job should terminate in maximum 60 seconds
+        self.timeout = 1800  # seconds job should terminate in maximum 60 seconds
 
         self._cloud_name = None
         self._cloud_credential = None
         self._cloud_configuration = None
-        # self._connector_name = None
         self._existing_virtual_machines_connector = None
         self._existing_virtual_machines_credential = None
         self._connector_instance = None
@@ -65,10 +51,6 @@ class StorageBucketsCollectJob(object):
 
     def _get_cloud_configuration(self):
         return self.ss_api.cimi_get(self.cloud_name).json
-
-    def _get_exiting_virtual_machines_for_credential(self):
-        return self.ss_api.cimi_search('virtualMachines', filter='credentials/href="{}" and connector/href="{}"'
-                                       .format(self.cloud_credential['id'], self.cloud_name)).resources_list
 
     def _get_existing_storage_bucket(self, bucket_name):
         return self.ss_api.cimi_search('storageBuckets', filter='credentials/href="{}" and bucketName="{}"'
@@ -94,36 +76,11 @@ class StorageBucketsCollectJob(object):
             self._connector_s3_endpoint = self.cloud_configuration["objectStoreEndpoint"]
         return self._connector_s3_endpoint
 
-    # @property
-    # def connector_name(self):
-    #     return self.cloud_configuration['cloudServiceType']
-
-    # @property
-    # def connector(self):
-    #     return load_module(connector_classes[self.connector_name])
-
-    # @property
-    # def connector_instance(self):
-    #     if self._connector_instance is None:
-    #         if not hasattr(self.connector, 'instantiate_from_cimi'):
-    #             raise NotImplementedError('The connector "{}" is not compatible with the collect_virtual_machines job'
-    #                                       .format(self.connector_name))
-    #         self._connector_instance = self.connector.instantiate_from_cimi(self.cloud_configuration,
-    #                                                                         self.cloud_credential)
-    #     return self._connector_instance
-
     @property
     def cloud_configuration(self):
         if self._cloud_configuration is None:
             self._cloud_configuration = self._get_cloud_configuration()
         return self._cloud_configuration
-
-    @property
-    def existing_virtual_machines_credential(self):
-        if self._existing_virtual_machines_credential is None:
-            vms = self._get_exiting_virtual_machines_for_credential()
-            self._existing_virtual_machines_credential = {vm.json['instanceID']: vm.json for vm in vms}
-        return self._existing_virtual_machines_credential
 
     def cred_exist_already(self, exiting_vm):
         for cred in exiting_vm['credentials']:
@@ -276,7 +233,6 @@ class StorageBucketsCollectJob(object):
 
         if not s3_endpoint:
             self.job.set_status_message("No object store endpoint associated with {}".format(self.cloud_credential['id']))
-            self.job.set_progress(100)
             return 10000
 
         s3_client = boto3.resource(
@@ -293,11 +249,11 @@ class StorageBucketsCollectJob(object):
 
         progress = 20
         for i, bucket in enumerate(all_buckets):
-            self.job.set_progress( progress + (i+1)*(100-progress)/nbuckets )
-            
             bucket_size = self._get_bucket_size(s3_client, bucket.name)
             if bucket_size > 0:
                 self.handle_cimi_storage_bucket(bucket.name, bucket_size)
+
+            self.job.set_progress( progress + (i+1)*(100-progress)/nbuckets )
 
 
         return 10000
