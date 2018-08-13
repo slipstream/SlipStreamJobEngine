@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import boto3
+
 try:
     from itertools import izip as zip  # PY2
 except ImportError:
@@ -15,18 +16,6 @@ from ..actions import action
 
 from slipstream.api import SlipStreamError
 
-# connector_classes = {
-#     'azure': 'slipstream_azure.AzureClientCloud',
-#     'cloudstack': 'slipstream_cloudstack.CloudStackClientCloud',
-#     'cloudstackadvancedzone': 'slipstream_cloudstack.CloudStackAdvancedZoneClientCloud',
-#     'ec2': 'slipstream_ec2.Ec2ClientCloud',
-#     'exoscale': 'slipstream_exoscale.ExoscaleClientCloud',
-#     'nuvlabox': 'slipstream_nuvlabox.NuvlaBoxClientCloud',
-#     'opennebula': 'slipstream_opennebula.OpenNebulaClientCloud',
-#     'openstack': 'slipstream_openstack.OpenStackClientCloud',
-#     'otc': 'slipstream_otc.OpenTelekomClientCloud',
-#     'softlayer': 'slipstream_nativesoftlayer.NativeSoftLayerClientCloud'
-# }
 
 @classlogger
 @action('collect_storage_buckets')
@@ -34,17 +23,12 @@ class StorageBucketsCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = executor.ss_api
-        self.timeout = 1800  # seconds job should terminate in maximum 60 seconds
+        self.timeout = 1800  # seconds job should terminate in maximum 30 minutes
 
         self._cloud_name = None
         self._cloud_credential = None
         self._cloud_configuration = None
-        self._existing_virtual_machines_connector = None
-        self._existing_virtual_machines_credential = None
-        self._connector_instance = None
         self._connector_s3_endpoint = None
-
-        self.handled_vms_instance_id = set([])
 
     def _get_cloud_credential(self):
         return self.ss_api.cimi_get(self.job['targetResource']['href']).json
@@ -55,10 +39,10 @@ class StorageBucketsCollectJob(object):
     def _get_existing_storage_bucket(self, bucket_name):
         return self.ss_api.cimi_search('storageBuckets', filter='credentials/href="{}" and bucketName="{}"'
                                        .format(self.cloud_credential['id'], bucket_name))
-        
+
     def _get_service_offer(self):
         return self.ss_api.cimi_search('serviceOffers', filter='resource:platform="S3" and connector/href="{}"'
-                                        .format(self.cloud_name.replace("connector/", ""))).resources_list
+                                       .format(self.cloud_name.replace("connector/", ""))).resources_list
 
     @property
     def cloud_credential(self):
@@ -82,8 +66,8 @@ class StorageBucketsCollectJob(object):
             self._cloud_configuration = self._get_cloud_configuration()
         return self._cloud_configuration
 
-    def cred_exist_already(self, exiting_vm):
-        for cred in exiting_vm['credentials']:
+    def cred_exist_already(self, exiting_sb):
+        for cred in exiting_sb['credentials']:
             if cred['href'] == self.cloud_credential['id']:
                 return True
         return False
@@ -98,7 +82,7 @@ class StorageBucketsCollectJob(object):
         for obj in client.Bucket(bucket_name).objects.all():
             # default size is in binary bytes
             # the size we want is in KB
-            size += int(obj.size/1024)
+            size += int(obj.size / 1024)
 
         return size
 
@@ -149,13 +133,14 @@ class StorageBucketsCollectJob(object):
         cimi_cloud_credentials = self.get_cloud_credentials([c['href'] for c in sb_credentials])
 
         json_resource['acl']['rules'] = self.combine_acl_rules(json_resource['acl']['rules'],
-                                                         self.acl_rules_from_managers(cimi_cloud_credentials))
+                                                               self.acl_rules_from_managers(cimi_cloud_credentials))
 
         # Remove credentials that don't exist anymore
         new_credentials = [{'href': c['id']} for c in cimi_cloud_credentials]
 
         if not self.cred_exist_already(existing_sb):
-            self.logger.debug('Credential {} will be appended to existing storage bucket {}.'.format(self.cloud_credential['id'],
+            self.logger.debug(
+                'Credential {} will be appended to existing storage bucket {}.'.format(self.cloud_credential['id'],
                                                                                        sb_id))
             new_credentials.append({'href': self.cloud_credential['id']})
 
@@ -166,10 +151,11 @@ class StorageBucketsCollectJob(object):
             self.ss_api.cimi_edit(sb_id, json_resource)
         except SlipStreamError as e:
             if e.response.status_code == 409:
-                # Could happen when VM is beeing updated at same time by different thread
+                # Could happen when sb is beeing updated at same time by different thread
                 self.logger.info('Storage bucket update conflict of {}.').format(sb_id)
                 random_wait(0.5, 5.0)
-                self.update_storage_bucket(json_resource, self._get_existing_storage_bucket(json_resource["bucketName"]))
+                self.update_storage_bucket(json_resource,
+                                           self._get_existing_storage_bucket(json_resource["bucketName"]))
                 # retry recursion is stopped by the job executor after self.timeout
         return sb_id
 
@@ -180,36 +166,33 @@ class StorageBucketsCollectJob(object):
         credentials = [{"href": self.cloud_credential["id"]}]
         connector = {'href': self.cloud_name}
 
-        acl = {'owner': {'type': 'ROLE', 'principal': 'ADMIN'}}
-
-        acl["rules"] = [{'principal': 'ADMIN', 'right': 'ALL', 'type': 'ROLE'},
-                     {'principal': self.cloud_credential['acl']['owner']['principal'], 'right': 'VIEW',
-                      'type': self.cloud_credential['acl']['owner']['type']}]
+        acl = {'owner': {'type': 'ROLE', 'principal': 'ADMIN'},
+               'rules': [{'principal': 'ADMIN', 'right': 'ALL', 'type': 'ROLE'},
+                         {'principal': self.cloud_credential['acl']['owner']['principal'], 'right': 'VIEW',
+                          'type': self.cloud_credential['acl']['owner']['type']}]}
 
         service_offer = self._get_service_offer()
 
         if len(service_offer) > 0:
             so = {'href': service_offer[0].json['id'],
-                                    'resource:storage': service_offer[0].json['resource:storage'],
-                                    'resource:host': service_offer[0].json['resource:host'],
-                                    'price:currency': service_offer[0].json['price:currency'],
-                                    'price:unitCost': service_offer[0].json['price:unitCost'],
-                                    'resource:platform': service_offer[0].json['resource:platform'],
-                                    'price:billingUnit': service_offer[0].json['price:billingUnit']}
+                  'resource:storage': service_offer[0].json['resource:storage'],
+                  'resource:host': service_offer[0].json['resource:host'],
+                  'price:currency': service_offer[0].json['price:currency'],
+                  'price:unitCost': service_offer[0].json['price:unitCost'],
+                  'resource:platform': service_offer[0].json['resource:platform'],
+                  'price:billingUnit': service_offer[0].json['price:billingUnit']}
         else:
             so = {'href': "service-offer/unknown"}
 
-
         sb_resource = {'resourceURI': 'http://sixsq.com/slipstream/1/StorageBucket',
-                          'description': description,
-                          'name': name,
-                          'acl': acl,
-                          'connector': connector,
-                          'credentials': credentials,
-                          'usage': bucket_size,
-                          'bucketName': bucket_name,
-                          'serviceOffer': so
-                          }
+                       'description': description,
+                       'name': name,
+                       'acl': acl,
+                       'connector': connector,
+                       'credentials': credentials,
+                       'usage': bucket_size,
+                       'bucketName': bucket_name,
+                       'serviceOffer': so}
 
         return sb_resource
 
@@ -232,15 +215,14 @@ class StorageBucketsCollectJob(object):
         self.job.set_progress(10)
 
         if not s3_endpoint:
-            self.job.set_status_message("No object store endpoint associated with {}".format(self.cloud_credential['id']))
+            self.job.set_status_message(
+                "No object store endpoint associated with {}".format(self.cloud_credential['id']))
             return 10000
 
-        s3_client = boto3.resource(
-            service_name='s3',
-            aws_access_key_id=self.cloud_credential["key"],
-            aws_secret_access_key=self.cloud_credential["secret"],
-            endpoint_url=s3_endpoint,
-        )
+        s3_client = boto3.resource(service_name='s3',
+                                   aws_access_key_id=self.cloud_credential["key"],
+                                   aws_secret_access_key=self.cloud_credential["secret"],
+                                   endpoint_url=s3_endpoint)
 
         self.job.set_progress(20)
 
@@ -253,8 +235,7 @@ class StorageBucketsCollectJob(object):
             if bucket_size > 0:
                 self.handle_cimi_storage_bucket(bucket.name, bucket_size)
 
-            self.job.set_progress( progress + (i+1)*(100-progress)/nbuckets )
-
+            self.job.set_progress(progress + (i + 1) * (100 - progress) / nbuckets)
 
         return 10000
 

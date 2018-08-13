@@ -11,14 +11,15 @@ from slipstream.job.util import override
 
 ####
 ####
-#### JUST WORKING FOR EXOSCALE AT THE MOMENT
-#### WAITING FOR https://github.com/slipstream/SlipStreamServer/issues/1639
+# JUST WORKING FOR EXOSCALE AT THE MOMENT
+# WAITING FOR https://github.com/slipstream/SlipStreamServer/issues/1639
 ####
 ####
 
 credential_types = {
-    'exoscale':               'cloud-cred-exoscale'
+    'exoscale': 'cloud-cred-exoscale'
 }
+
 
 @classlogger
 class CollectStorageBucketsDistributor(Distributor):
@@ -29,7 +30,8 @@ class CollectStorageBucketsDistributor(Distributor):
         self.collect_interval = 60.0
 
     def _get_credentials(self):
-        response = self.ss_api.cimi_search('credentials', filter='type^="%s"' % '" or type^="'.join(credential_types.values()))
+        response = self.ss_api.cimi_search('credentials',
+                                           filter='type^="%s"' % '" or type^="'.join(credential_types.values()))
         return response.json.get('credentials')
 
     @staticmethod
@@ -68,11 +70,10 @@ class CollectStorageBucketsDistributor(Distributor):
                     else:
                         api_key_list.append(credential["key"])
 
-
-
                 pending_jobs = \
                     self.ss_api.cimi_search('jobs', filter='action="{}" and targetResource/href="{}" and state="QUEUED"'
-                                            .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id']), last=0)
+                                            .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id']),
+                                            last=0)
                 if pending_jobs.json['count'] == 0:
                     # TODO: waiting for https://github.com/slipstream/SlipStreamServer/issues/1639
                     # to define endpoint dynamically, from the connector resource
@@ -83,7 +84,7 @@ class CollectStorageBucketsDistributor(Distributor):
                         continue
 
                     job = {'action': CollectStorageBucketsDistributor.ACTION_NAME,
-                        'targetResource': {'href': credential['id']}}
+                           'targetResource': {'href': credential['id']}}
                     yield job
                 else:
                     self.logger.debug('Action {} already queued, will not create a new job for {}.'
