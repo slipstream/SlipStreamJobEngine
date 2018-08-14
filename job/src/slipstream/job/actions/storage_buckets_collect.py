@@ -185,6 +185,7 @@ class StorageBucketsCollectJob(object):
             so = {'href': "service-offer/unknown"}
 
         sb_resource = {'resourceURI': 'http://sixsq.com/slipstream/1/StorageBucket',
+                       'unit': "KB",
                        'description': description,
                        'name': name,
                        'acl': acl,
