@@ -2,8 +2,9 @@
 
 from __future__ import print_function
 
+import os
 import logging
-from threading import Thread
+from threading import Thread, currentThread
 
 from elasticsearch import Elasticsearch
 from slipstream.api import Api
@@ -31,7 +32,9 @@ class Executor(Base):
 
     def _process_jobs(self):
         queue = self._kz.LockingQueue('/job')
-        api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure, reauthenticate=True)
+        cookie_file_thread = os.path.expanduser('~/.slipstream/{}_cookies.txt'.format(currentThread().getName()))
+        api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure, reauthenticate=True,
+                  cookie_file=cookie_file_thread)
         api.login_internal(self.args.ss_user, self.args.ss_pass)
 
         while not self.stop_event.is_set():
