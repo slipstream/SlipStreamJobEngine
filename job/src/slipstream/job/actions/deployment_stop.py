@@ -44,7 +44,7 @@ class DeploymentStopJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = executor.ss_api
-        self.timeout = 60  # seconds job should terminate in maximum 60 seconds
+        self.timeout = 90  # seconds job should terminate in maximum 90 seconds
 
         self._deployment = None
         self._cloud_name = None

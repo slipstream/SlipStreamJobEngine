@@ -42,10 +42,10 @@ class DeploymentStartJob(object):
         self._cloud_configuration = None
         self._slipstream_configuration = None
         self._user = None
+        self._user_params = None
         self._connector_name = None
         self._connector_instance = None
-
-        self.handled_vms_instance_id = set([])
+        self.deployment_owner = self.deployment['acl']['owner']['principal']
 
     def _get_deployment(self):
         return self.ss_api.cimi_get(self.job['targetResource']['href']).json
@@ -54,8 +54,12 @@ class DeploymentStartJob(object):
         return self.ss_api.cimi_get('configuration/slipstream').json
 
     def _get_user(self):
-        deployment_owner = 'khaled'  # FIXME extract deployment owner
-        return self.ss_api.cimi_get('user/{}'.format(deployment_owner)).json
+        return self.ss_api.cimi_get('user/{}'.format(self.deployment_owner)).json
+
+    def _get_user_params(self):
+        user_params = self.ss_api.cimi_search('userParam',
+                                              filter='acl/owner/principal="{}"'.format(self.deployment_owner))
+        return user_params.resources_list[0].json
 
     @property
     def cloud_credential(self):
@@ -103,6 +107,12 @@ class DeploymentStartJob(object):
             self._user = self._get_user()
         return self._user
 
+    @property
+    def user_params(self):
+        if self._user_params is None:
+            self._user_params = self._get_user_params()
+        return self._user_params
+
     def generate_key_secret(self):
         # FIXME: this will create an api key secret with limited scope to the deployment and deployment parameters.
         # the key and secret will be stored in deployment. It will have a special role which allow creation of reports
@@ -115,18 +125,33 @@ class DeploymentStartJob(object):
         # self.ss_api.cimi_add('credentials', data)
         return 'credential/5449cb4d-fb35-401b-a064-fba89d524a90', 'd7NQ3w.Jt9YLZ.Hr8vV2.hK4KyJ.qvLJcQ'
 
-    def create_deployment_parameter(self, node_id, user, parm_name, param_value=None):
-        parameter = {'name': parm_name,
-                     'nodeID': node_id,
+    def create_deployment_parameter(self, user, param_name, param_value=None, node_id=None, param_description=None):
+        parameter = {'name': param_name,
                      'deployment': {'href': self.deployment['id']},
                      'acl': {'owner': {'principal': 'ADMIN',
                                        'type': 'ROLE'},
                              'rules': [{'principal': user,
                                         'type': 'USER',
                                         'right': 'MODIFY'}]}}  # TODO not always allow modification
+        if node_id:
+            parameter['nodeID'] = node_id
+        if param_description:
+            parameter['description'] = param_description
         if param_value:
             parameter['value'] = param_value
         return self.ss_api.cimi_add('deploymentParameters', parameter)
+
+    @staticmethod
+    def lookup_recursively_module(module, keys):  # FIXME: support for array of maps
+        temp = module
+        for k in keys[:-1]:
+            temp = temp.get(k, {})
+        value = temp.get(keys[-1])
+        if value:
+            return value
+        module_parent = module.get('content', {}).get('parent')
+        if module_parent:
+            return DeploymentStartJob.lookup_recursively_module(module_parent, keys)
 
     def handle_deployment(self):
 
@@ -194,13 +219,7 @@ class DeploymentStartJob(object):
         connector_instance, user_info = \
             DeploymentStartJob.connector_instance_userinfo(cloud_configuration, cloud_credential)
 
-        user_ssh_pub_keys = 'ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAQEAnRxAn1QdEdHEjgerzI3aBBgezjjG4Zv3FxVRgBuzgog2Px8Zti6g' \
-                            '74bjs+iNgabduLZCskc87ZHOb97iDktefrOMrucBqkWVvnC5gFxI4lD8EhrIS0MyqIHm+Flbf2Sr6gjcqCttT1bX' \
-                            '7s9vL3LMNw9WZ+6brsufBVg3rexjk2GvbqHcmWV98I5v+KIoSCUwmN2o+ENTL8qWCOO8JPqHmyF9qJYudEC1RU0a' \
-                            'lUcA5UVEJYeGsX13unhNEDeZIvAObAh/uIhA6V7GPg803JGwmOClQ0BIPVBudv2mHHQFTms/6NBqK10v5bEGO47N' \
-                            'kJb8c+K8sePufd71PxSu77MH4Q== khaled'
-
-        user_info.set_public_keys(user_ssh_pub_keys)
+        user_info.set_public_keys(self.user_params.get('sshPublicKey'))
 
         deployment_ss_key, deployment_ss_secret = self.generate_key_secret()
 
@@ -208,21 +227,26 @@ class DeploymentStartJob(object):
 
         module = self.deployment['module']
 
+        disk = DeploymentStartJob.lookup_recursively_module(module, ['content', 'disk'])
+        image_id = DeploymentStartJob.lookup_recursively_module(module, ['content', 'imageIDs', cloud_instance_name])
+        network_type = DeploymentStartJob.lookup_recursively_module(module, ['content', 'networkType'])
+        login_user = DeploymentStartJob.lookup_recursively_module(module, ['content', 'loginUser'])
+
         node_instance_name = 'machine-test'
 
         node1 = NodeInstance({
-            '{}.disk'.format(cloud_instance_name): str(module['content']['disk']),
+            '{}.disk'.format(cloud_instance_name): str(disk),
             '{}.security.groups'.format(cloud_instance_name): 'slipstream_managed',
             '{}.networks'.format(cloud_instance_name): '',
             '{}.instance.type'.format(cloud_instance_name): 'Micro',
             # search for service offer should occur when creating the deployment template
             'image.platform': 'linux',
-            'network': module['content']['networkType'],
+            'network': network_type,
             'cloudservice': cloud_instance_name,
-            'image.id': module['content']['imageIDs'][cloud_instance_name],
-            'image.imageId': module['content']['imageIDs'][cloud_instance_name],
+            'image.id': image_id,
+            'image.imageId': image_id,
             'node_instance_name': node_instance_name,
-            'image.loginUser': 'ubuntu'})
+            'image.loginUser': login_user})
 
         node1_context = {'SLIPSTREAM_DIID': self.deployment.get('id'),
                          'SLIPSTREAM_SERVICEURL': self.slipstream_configuration.get('serviceURL'),
@@ -234,32 +258,42 @@ class DeploymentStartJob(object):
                          'SLIPSTREAM_API_KEY': deployment_ss_key,
                          'SLIPSTREAM_API_SECRET': deployment_ss_secret,
                          'SLIPSTREAM_SS_CACHE_KEY': self.deployment.get('id'),
-                         'SLIPSTREAM_USER_SSH_PUB_KEYS': user_ssh_pub_keys}
+                         'SLIPSTREAM_USER_SSH_PUB_KEYS': self.user_params.get('sshPublicKey')}
 
         node1.set_deployment_context(node1_context)
         node_instances = {node_instance_name: node1}
         # need discussion, this is done by thread and allow
         # to limit max_iaas_workers
         initialization_extra_kwargs = {}
+        self.create_deployment_parameter(deployment_owner,
+                                         NodeDecorator.globalNamespacePrefix + NodeDecorator.STATE_KEY, 'Executing')
+        self.create_deployment_parameter(deployment_owner,
+                                         NodeDecorator.globalNamespacePrefix + NodeDecorator.ABORT_KEY)
         connector_instance.start_nodes_and_clients(user_info, node_instances, initialization_extra_kwargs)
 
         for node_name, node in node_instances.items():
-            self.create_deployment_parameter(node_name, deployment_owner,
-                                             NodeDecorator.CLOUD_NODE_ID_KEY, node.get_cloud_node_id())
-            self.create_deployment_parameter(node_name, deployment_owner,
-                                             NodeDecorator.CLOUD_NODE_IP_KEY, node.get_cloud_node_ip())
+            self.create_deployment_parameter(deployment_owner, NodeDecorator.ABORT_KEY, None, node_name)
             if node.get_cloud_node_ssh_url():
-                self.create_deployment_parameter(node_name, deployment_owner,
-                                                 NodeDecorator.CLOUD_NODE_SSH_URL_KEY,
-                                                 node.get_cloud_node_ssh_url())
+                self.create_deployment_parameter(deployment_owner, 'url.ssh',
+                                                 node.get_cloud_node_ssh_url(), node_name)
             if node.get_cloud_node_ssh_password():
-                self.create_deployment_parameter(node_name, deployment_owner,
-                                                 NodeDecorator.CLOUD_NODE_SSH_PASSWORD_KEY,
-                                                 node.get_cloud_node_ssh_password())
+                self.create_deployment_parameter(deployment_owner, 'password.ssh',
+                                                 node.get_cloud_node_ssh_password(), node_name)
             if node.get_cloud_node_ssh_keypair_name():
-                self.create_deployment_parameter(node_name, deployment_owner,
-                                                 NodeDecorator.CLOUD_NODE_SSH_KEYPAIR_NAME_KEY,
-                                                 node.get_cloud_node_ssh_keypair_name())
+                self.create_deployment_parameter(deployment_owner, 'keypair.name',
+                                                 node.get_cloud_node_ssh_keypair_name(), node_name)
+            self.create_deployment_parameter(deployment_owner, 'url.service', None, node_name)
+            self.create_deployment_parameter(deployment_owner, 'ss:url.service')
+            self.create_deployment_parameter(deployment_owner, 'statecustom', None, node_name)
+
+            node_values = {NodeDecorator.INSTANCEID_KEY: node.get_cloud_node_id(),
+                           'hostname': node.get_cloud_node_ip()}
+            for param in module['content'].get('outputParameters', []) + module['content'].get('inputParameters', []):
+                value = param.get('value')
+                if param['parameter'] in ('hostname', NodeDecorator.INSTANCEID_KEY):
+                    value = node_values.get(param['parameter'])
+                self.create_deployment_parameter(deployment_owner, param['parameter'], value, node_name,
+                                                 param['description'])
 
         self.ss_api.cimi_edit(self.deployment['id'], {'state': 'STARTED'})
 
