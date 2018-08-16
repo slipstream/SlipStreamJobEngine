@@ -41,7 +41,7 @@ class StorageBucketsCollectJob(object):
                                        .format(self.cloud_credential['id'], bucket_name))
 
     def _get_service_offer(self):
-        return self.ss_api.cimi_search('serviceOffers', filter='resource:platform="S3" and connector/href="{}"'
+        return self.ss_api.cimi_search('serviceOffers', filter='resource:storage!=null and resource:platform="S3" and connector/href="{}"'
                                        .format(self.cloud_name.replace("connector/", ""))).resources_list
 
     @property
