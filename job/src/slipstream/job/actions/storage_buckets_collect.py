@@ -22,7 +22,7 @@ from slipstream.api import SlipStreamError
 class StorageBucketsCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
-        self.ss_api = executor.ss_api
+        self.ss_api = job.ss_api
         self.timeout = 1800  # seconds job should terminate in maximum 30 minutes
 
         self._cloud_name = None
