@@ -196,7 +196,7 @@ class VirtualMachinesCollectJob(object):
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 # Could happen when VM is beeing updated at same time by different thread
-                self.logger.info('VM update conflict of {}.').format(cimi_vm_id)
+                self.logger.info('VM update conflict of {}.'.format(cimi_vm_id))
                 random_wait(0.5, 5.0)
                 self.update_vm(vm_id, self._get_existing_virtual_machine(vm_id), vm)
                 # retry recursion is stopped by the job executor after self.timeout
