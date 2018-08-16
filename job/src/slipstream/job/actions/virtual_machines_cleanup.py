@@ -13,7 +13,7 @@ import datetime
 class VirtualMachinesCleanupJob(object):
     def __init__(self, executor, job):
         self.job = job
-        self.ss_api = executor.ss_api
+        self.ss_api = job.ss_api
         self.timeout = 120  # seconds job should terminate in maximum 120 seconds
 
     def cleanup_jobs(self):
