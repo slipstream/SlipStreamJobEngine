@@ -191,7 +191,7 @@ class StorageBucketsCollectJob(object):
                        'acl': acl,
                        'connector': connector,
                        'credentials': credentials,
-                       'usage': bucket_size,
+                       'usageInKiB': bucket_size,
                        'bucketName': bucket_name,
                        'serviceOffer': so}
 
