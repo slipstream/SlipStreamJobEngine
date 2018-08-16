@@ -56,7 +56,7 @@ class StorageBucketsCollectJob(object):
 
     @property
     def connector_s3_endpoint(self):
-        if self._connector_s3_endpoint is None:
+        if self._connector_s3_endpoint is None and "objectStoreEndpoint" in self.cloud_configuration:
             self._connector_s3_endpoint = self.cloud_configuration["objectStoreEndpoint"]
         return self._connector_s3_endpoint
 
