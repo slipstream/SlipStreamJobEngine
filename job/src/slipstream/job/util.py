@@ -3,14 +3,14 @@
 from __future__ import print_function
 
 import os
+import sys
+import signal
 import random
 import warnings
 import threading
 import traceback
 import logging
 import pprint
-
-import sys
 
 PY2 = sys.version_info[0] == 2
 
@@ -39,6 +39,7 @@ def print_stack(signum, frame):
     for th in threading.enumerate():
         trace = traceback.extract_stack(sys._current_frames()[th.ident])
         logging.getLogger().error('thread {}:\n{}'.format(th.getName(), pprint.pformat(trace)))
+    signal.signal(signal.SIGUSR1, print_stack)
 
 
 class InterruptException(Exception):
