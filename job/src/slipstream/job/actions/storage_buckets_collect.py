@@ -180,6 +180,7 @@ class StorageBucketsCollectJob(object):
                   'price:currency': service_offer[0].json['price:currency'],
                   'price:unitCost': service_offer[0].json['price:unitCost'],
                   'resource:platform': service_offer[0].json['resource:platform'],
+                  'resource:type':service_offer[0].json['resource:type'],
                   'price:billingUnit': service_offer[0].json['price:billingUnit']}
         else:
             so = {'href': "service-offer/unknown"}
