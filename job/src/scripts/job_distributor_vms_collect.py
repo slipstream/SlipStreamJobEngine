@@ -4,13 +4,12 @@
 from __future__ import print_function
 
 import time
+import logging
 from slipstream.job.base import main
 from slipstream.job.distributor import Distributor
-from slipstream.job.util import classlogger
 from slipstream.job.util import override
 
 
-@classlogger
 class CollectVmsDistributor(Distributor):
     ACTION_NAME = 'collect_virtual_machines'
 
@@ -48,7 +47,7 @@ class CollectVmsDistributor(Distributor):
                            'targetResource': {'href': credential['id']}}
                     yield job
                 else:
-                    self.logger.debug('Action {} already queued, will not create a new job for {}.'
+                    logging.debug('Action {} already queued, will not create a new job for {}.'
                                       .format(CollectVmsDistributor.ACTION_NAME, credential['id']))
 
                 time.sleep(yield_interval)

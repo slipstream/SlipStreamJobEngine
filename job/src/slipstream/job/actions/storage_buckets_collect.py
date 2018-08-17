@@ -10,19 +10,18 @@ except ImportError:
     pass  # PY3
 
 from ..util import random_wait
-from ..util import classlogger
 
 from ..actions import action
 
 from slipstream.api import SlipStreamError
 
 
-@classlogger
 @action('collect_storage_buckets')
 class StorageBucketsCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = job.ss_api
+        self.logger = job.logger
         self.timeout = 1800  # seconds job should terminate in maximum 30 minutes
 
         self._cloud_name = None
@@ -41,7 +40,8 @@ class StorageBucketsCollectJob(object):
                                        .format(self.cloud_credential['id'], bucket_name))
 
     def _get_service_offer(self):
-        return self.ss_api.cimi_search('serviceOffers', filter='resource:storage!=null and resource:platform="S3" and connector/href="{}"'
+        return self.ss_api.cimi_search('serviceOffers',
+                                       filter='resource:storage!=null and resource:platform="S3" and connector/href="{}"'
                                        .format(self.cloud_name.replace("connector/", ""))).resources_list
 
     @property

@@ -4,7 +4,7 @@ from __future__ import print_function
 
 from slipstream.api import SlipStreamError, ConnectionError
 
-from .util import classlogger, wait
+from .util import wait
 
 
 class NonexistentJobError(Exception):
@@ -13,14 +13,14 @@ class NonexistentJobError(Exception):
         self.reason = reason
 
 
-@classlogger
 class Job(dict):
 
-    def __init__(self, ss_api, queue):
+    def __init__(self, ss_api, queue, logger):
         self.nothing_to_do = False
         self.id = None
         self.queue = queue
         self.ss_api = ss_api
+        self.logger = logger
         try:
             self.id = queue.get()
             cimi_job = self.get_cimi_job(self.id)
@@ -57,7 +57,8 @@ class Job(dict):
             except SlipStreamError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
-                    self.logger.warning('Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
+                    self.logger.warning(
+                        'Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
                     wait(wait_time)
                 else:
                     raise e

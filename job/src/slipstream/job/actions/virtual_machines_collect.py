@@ -8,7 +8,6 @@ except ImportError:
     pass  # PY3
 
 from ..util import load_module, random_wait
-from ..util import classlogger
 
 from ..actions import action
 
@@ -40,12 +39,12 @@ def try_extract_number(input):
         return val
 
 
-@classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = job.ss_api
+        self.logger = job.logger
         self.timeout = 60  # seconds job should terminate in maximum 60 seconds
 
         self._cloud_name = None

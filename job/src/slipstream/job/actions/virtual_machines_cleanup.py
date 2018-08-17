@@ -2,18 +2,17 @@
 
 from __future__ import print_function
 
-from ..util import classlogger
 from ..actions import action
 
 import datetime
 
 
-@classlogger
 @action('cleanup_virtual_machines')
 class VirtualMachinesCleanupJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = job.ss_api
+        self.logger = job.logger
         self.timeout = 120  # seconds job should terminate in maximum 120 seconds
 
     def cleanup_jobs(self):
