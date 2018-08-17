@@ -8,7 +8,6 @@ except ImportError:
     pass  # PY3
 
 from ..util import load_module, random_wait
-from ..util import classlogger
 
 from ..actions import action
 
@@ -40,12 +39,12 @@ def try_extract_number(input):
         return val
 
 
-@classlogger
 @action('collect_virtual_machines')
 class VirtualMachinesCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
-        self.ss_api = executor.ss_api
+        self.ss_api = job.ss_api
+        self.logger = job.logger
         self.timeout = 60  # seconds job should terminate in maximum 60 seconds
 
         self._cloud_name = None
@@ -196,7 +195,7 @@ class VirtualMachinesCollectJob(object):
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 # Could happen when VM is beeing updated at same time by different thread
-                self.logger.info('VM update conflict of {}.').format(cimi_vm_id)
+                self.logger.info('VM update conflict of {}.'.format(cimi_vm_id))
                 random_wait(0.5, 5.0)
                 self.update_vm(vm_id, self._get_existing_virtual_machine(vm_id), vm)
                 # retry recursion is stopped by the job executor after self.timeout
@@ -278,6 +277,7 @@ class VirtualMachinesCollectJob(object):
                                     'resource:ram': service_offer.get('resource:ram', vm_ram),
                                     'resource:disk': service_offer.get('', vm_disk),
                                     'resource:instanceType': service_offer.get('', vm_instanceType),
+                                    'resource:type': service_offer.get('resource:type', None),
                                     'price:unitCost': service_offer.get('price:unitCost', None),
                                     'price:billingPeriodCode': service_offer.get('price:billingPeriodCode', None),
                                     'price:freeUnits': service_offer.get('price:freeUnits', None),

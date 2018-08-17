@@ -3,34 +3,33 @@
 from __future__ import print_function
 
 import time
+import logging
 
 from .base import Base
-from .util import classlogger
 
 
-@classlogger
 class Distributor(Base):
     def __init__(self):
         super(Distributor, self).__init__()
-        self._init_logger('distributor_{}.log'.format(self._get_jobs_type()))
+        Base._init_logger('distributor_{}.log'.format(self._get_jobs_type()))
 
     def _job_distributor(self):
-        self.logger.info(self._log_msg('I am {} and I have been elected to distribute "{}" jobs'
-                                       .format(self.name, self._get_jobs_type())))
+        logging.info(self._log_msg('I am {} and I have been elected to distribute "{}" jobs'
+                                   .format(self.name, self._get_jobs_type())))
         while not self.stop_event.is_set():
             for cimi_job in self.job_generator():
                 try:
-                    self.logger.info(self._log_msg('Distribute job: {}'.format(cimi_job)))
+                    logging.info(self._log_msg('Distribute job: {}'.format(cimi_job)))
                     self.ss_api.cimi_add('jobs', cimi_job)
                 except:
-                    self.logger.exception(self._log_msg('Failed to distribute job: {}'.format(cimi_job)))
+                    logging.exception(self._log_msg('Failed to distribute job: {}'.format(cimi_job)))
                     time.sleep(0.1)
-        self.logger.info('Distributor properly stopped.')
+        logging.info('Distributor properly stopped.')
 
     def _start_distribution(self):
         election = self._kz.Election('/election/{}'.format(self._get_jobs_type()), self.name)
         while True:
-            self.logger.info(self._log_msg('STARTING ELECTION'))
+            logging.info(self._log_msg('STARTING ELECTION'))
             election.run(self._job_distributor)
 
     # ----- METHOD THAT CAN/SHOULD BE IMPLEMENTED IN DISTRIBUTOR SUBCLASS -----
@@ -44,5 +43,5 @@ class Distributor(Base):
         raise NotImplementedError()
 
     def do_work(self):
-        self.logger.info(self._log_msg('I am distributor {}.'.format(self.name)))
+        logging.info(self._log_msg('I am distributor {}.'.format(self.name)))
         self._start_distribution()

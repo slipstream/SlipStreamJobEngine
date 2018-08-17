@@ -165,6 +165,7 @@
               pip install -Iv kazoo
               pip install -Iv elasticsearch
               pip install -Iv stopit
+              pip install -Iv boto3
             </script>
           </postinstallScriptlet>
 

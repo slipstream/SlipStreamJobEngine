@@ -2,16 +2,15 @@
 
 from __future__ import print_function
 
-from ..util import classlogger
 from ..actions import action
 
 
-@classlogger
 @action('cleanup_nb_state_snaps')
 class NuvlaboxStateSnapshotsCleanupJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.es = executor.es
+        self.logger = job.logger
         self.timeout = 30  # seconds job should terminate in maximum 30 seconds
 
     def cleanup_snapshots(self):

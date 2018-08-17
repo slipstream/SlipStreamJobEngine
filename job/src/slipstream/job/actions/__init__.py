@@ -2,6 +2,11 @@
 
 from __future__ import print_function
 
+import glob
+import logging
+
+from os.path import dirname, basename, isfile
+
 """
 This package contains code to be executed to process jobs.
 
@@ -14,20 +19,12 @@ If the job fail to process, the callable should throw an exception.
 Examples:
 """
 
-import glob
-
-from os.path import dirname, basename, isfile
-
-from ..util import classlogger
-
-modules = glob.glob(dirname(__file__)+"/*.py")
+modules = glob.glob(dirname(__file__) + "/*.py")
 
 __all__ = [basename(f)[:-3] for f in modules if isfile(f) and not f.endswith('__init__.py')]
 
 
-@classlogger
 class Actions(object):
-
     actions = {}
 
     @classmethod
@@ -36,7 +33,7 @@ class Actions(object):
 
     @classmethod
     def register_action(cls, action_name, action):
-        cls.logger.info('Action "{}" registered'.format(action_name))
+        logging.info('Action "{}" registered'.format(action_name))
         cls.actions[action_name] = action
 
     @classmethod
@@ -48,7 +45,7 @@ class Actions(object):
                 _action_name = f.__name__
 
             if _action_name in cls.actions:
-                cls.logger.error('Action "{}" is already defined'.format(_action_name))
+                logging.error('Action "{}" is already defined'.format(_action_name))
             else:
                 cls.register_action(_action_name, f)
 
