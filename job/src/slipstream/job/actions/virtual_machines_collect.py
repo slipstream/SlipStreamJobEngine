@@ -278,6 +278,7 @@ class VirtualMachinesCollectJob(object):
                                     'resource:ram': service_offer.get('resource:ram', vm_ram),
                                     'resource:disk': service_offer.get('', vm_disk),
                                     'resource:instanceType': service_offer.get('', vm_instanceType),
+                                    'resource:type': service_offer.get('resource:type', None),
                                     'price:unitCost': service_offer.get('price:unitCost', None),
                                     'price:billingPeriodCode': service_offer.get('price:billingPeriodCode', None),
                                     'price:freeUnits': service_offer.get('price:freeUnits', None),
