@@ -4,6 +4,7 @@
 from __future__ import print_function
 
 import time
+import logging
 from slipstream.job.base import main
 from slipstream.job.distributor import Distributor
 from slipstream.job.util import override
@@ -68,11 +69,10 @@ class CollectStorageBucketsDistributor(Distributor):
                     else:
                         api_key_list.append(credential["key"])
 
-                pending_jobs = \
-                    self.ss_api.cimi_search('jobs', filter='action="{}" and targetResource/href="{}" and state="QUEUED"'
-                                            .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id']),
-                                            last=0)
-                if pending_jobs.json['count'] == 0:
+                filter_jobs = 'action="{}" and targetResource/href="{}" and (state="QUEUED" or state="RUNNING")' \
+                    .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id'])
+                pending_running_jobs = self.ss_api.cimi_search('jobs', filter=filter_jobs, last=0)
+                if pending_running_jobs.json['count'] == 0:
                     # TODO: waiting for https://github.com/slipstream/SlipStreamServer/issues/1639
                     # to define endpoint dynamically, from the connector resource
                     #
@@ -85,7 +85,7 @@ class CollectStorageBucketsDistributor(Distributor):
                            'targetResource': {'href': credential['id']}}
                     yield job
                 else:
-                    logging.debug('Action {} already queued, will not create a new job for {}.'
+                    logging.debug('Action {} already queued or running, will not create a new job for {}.'
                                   .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id']))
 
                 time.sleep(yield_interval)
