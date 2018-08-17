@@ -6,11 +6,9 @@ from __future__ import print_function
 import time
 from slipstream.job.base import main
 from slipstream.job.distributor import Distributor
-from slipstream.job.util import classlogger
 from slipstream.job.util import override
 
 
-@classlogger
 class CleanupVmsDistributor(Distributor):
     ACTION_NAME = 'cleanup_virtual_machines'
 

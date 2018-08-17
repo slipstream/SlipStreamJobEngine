@@ -13,7 +13,7 @@ from functools import partial
 from kazoo.client import KazooClient
 from slipstream.api import Api
 
-from .util import classlogger, assure_path_exists, print_stack
+from .util import assure_path_exists, print_stack
 
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',
          'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
@@ -21,7 +21,6 @@ names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy
 LOG_FILENAME = '/var/log/slipstream/job.log'
 
 
-@classlogger
 class Base(object):
     def __init__(self):
         self.args = None
@@ -64,7 +63,8 @@ class Base(object):
     def _set_command_specific_options(self, parser):
         pass
 
-    def _init_logger(self, log_filename):
+    @staticmethod
+    def _init_logger(log_filename):
         filename = '/var/log/slipstream/job/{}'.format(log_filename)
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
@@ -75,7 +75,7 @@ class Base(object):
         logging.getLogger('stopit').setLevel(logging.ERROR)
         assure_path_exists(filename)
         handler_file = RotatingFileHandler(filename, mode='a', maxBytes=10485760, backupCount=5)
-        log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(threadName)s - %(message)s')
+        log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)s - %(message)s')
         handler_file.setFormatter(log_format)
         handler_console = logging.StreamHandler()
         handler_console.setFormatter(log_format)

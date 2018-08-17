@@ -6,7 +6,6 @@ from __future__ import print_function
 import time
 from slipstream.job.base import main
 from slipstream.job.distributor import Distributor
-from slipstream.job.util import classlogger
 from slipstream.job.util import override
 
 ####
@@ -21,7 +20,6 @@ credential_types = {
 }
 
 
-@classlogger
 class CollectStorageBucketsDistributor(Distributor):
     ACTION_NAME = 'collect_storage_buckets'
 
@@ -87,8 +85,8 @@ class CollectStorageBucketsDistributor(Distributor):
                            'targetResource': {'href': credential['id']}}
                     yield job
                 else:
-                    self.logger.debug('Action {} already queued, will not create a new job for {}.'
-                                      .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id']))
+                    logging.debug('Action {} already queued, will not create a new job for {}.'
+                                  .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id']))
 
                 time.sleep(yield_interval)
             time.sleep(self._time_left(start_time))

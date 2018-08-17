@@ -2,8 +2,7 @@
 
 from __future__ import print_function
 
-from ..util import load_module, classlogger, random_wait
-
+from ..util import load_module, random_wait
 from ..actions import action
 
 from slipstream.api import SlipStreamError
@@ -37,12 +36,12 @@ limits_aggregation = {
 }
 
 
-@classlogger
 @action('collect_quotas')
 class QuotasCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = job.ss_api
+        self.logger = job.logger
         self.timeout = 60  # seconds job should terminate in maximum 60 seconds
 
         self._cloud_credential = None

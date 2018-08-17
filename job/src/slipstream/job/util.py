@@ -24,21 +24,10 @@ def random_wait(secs_min, secs_max):
     wait(random.uniform(secs_min, secs_max))
 
 
-def classlogger(c):
-    """
-    A decorator that add a 'log' attribute to the class.
-    The log attribute contain a logger with the name: <class_name>
-    """
-    if len(logging.getLogger().handlers) < 1:
-        logging.basicConfig(level=logging.INFO)
-    setattr(c, 'logger', logging.getLogger('{}'.format(c.__name__)))
-    return c
-
-
 def print_stack(signum, frame):
     for th in threading.enumerate():
         trace = traceback.extract_stack(sys._current_frames()[th.ident])
-        logging.getLogger().error('thread {}:\n{}'.format(th.getName(), pprint.pformat(trace)))
+        logging.error('thread {}:\n{}'.format(th.getName(), pprint.pformat(trace)))
     signal.signal(signal.SIGUSR1, print_stack)
 
 
