@@ -28,7 +28,7 @@ class Job(dict):
             if self.is_in_final_state():
                 result = queue.consume()
                 self.logger.warning('Newly retrieved {} already in final state! ' +
-                                    'Removed from queue: success {}.').format(self.id, result)
+                                    'Removed from queue: success {}.'.format(self.id, result))
                 self.nothing_to_do = True
             elif self.get('state') == 'RUNNING':
                 # could happen when updating job and cimi server is down! let job actions decide what to do with it.
