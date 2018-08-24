@@ -65,7 +65,7 @@ class Base(object):
 
     @staticmethod
     def _init_logger(log_filename):
-        filename = '/var/log/slipstream/job/{}'.format(log_filename)
+        filename = '/var/tmp/{}'.format(log_filename)
         logger = logging.getLogger()
         logger.setLevel(logging.INFO)
         logging.getLogger('kazoo').setLevel(logging.WARN)

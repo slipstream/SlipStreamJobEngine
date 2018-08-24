@@ -8,8 +8,6 @@ except ImportError:
     pass  # PY3
 
 from ..util import load_module
-from ..util import classlogger
-
 from ..actions import action
 
 connector_classes = {
@@ -38,12 +36,12 @@ def try_extract_number(input):
         return val
 
 
-@classlogger
 @action('stop_deployment')
 class DeploymentStopJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = executor.ss_api
+        self.logger = job.logger
         self.timeout = 90  # seconds job should terminate in maximum 90 seconds
 
         self._deployment = None
@@ -98,7 +96,7 @@ class DeploymentStopJob(object):
         connector_instance, user_info = \
             DeploymentStopJob.connector_instance_userinfo(cloud_configuration, cloud_credential)
 
-        filter_param_instanceid = 'deployment/href="{}" and name="cloud.node.id"'.format(self.deployment['id'])
+        filter_param_instanceid = 'deployment/href="{}" and name="instanceid"'.format(self.deployment['id'])
         nodes_ids_resp = self.ss_api.cimi_search('deploymentParameters', filter=filter_param_instanceid,
                                                  select='value').resources_list
 
@@ -106,6 +104,7 @@ class DeploymentStopJob(object):
         for node in nodes_ids_resp:
             instance_ids.append(node.json.get('value'))
 
+        self.logger.warning(instance_ids)
         connector_instance.stop_vms_by_ids(instance_ids)
 
         self.ss_api.cimi_edit(self.deployment['id'], {'state': 'STOPPED'})

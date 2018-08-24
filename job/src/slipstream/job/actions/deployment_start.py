@@ -8,7 +8,6 @@ except ImportError:
     pass  # PY3
 
 from ..util import load_module
-from ..util import classlogger
 
 from ..actions import action
 
@@ -28,12 +27,12 @@ connector_classes = {
 }
 
 
-@classlogger
 @action('start_deployment')
 class DeploymentStartJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = executor.ss_api
+        self.logger = job.logger
         self.timeout = 60  # seconds job should terminate in maximum 60 seconds
 
         self._deployment = None
@@ -252,8 +251,10 @@ class DeploymentStartJob(object):
                          'SLIPSTREAM_SERVICEURL': self.slipstream_configuration.get('serviceURL'),
                          'SLIPSTREAM_NODE_INSTANCE_NAME': node_instance_name,
                          'SLIPSTREAM_CLOUD': 'exoscale-ch-gva',
-                         'SLIPSTREAM_BUNDLE_URL': self.slipstream_configuration.get('clientURL'),
-                         'SLIPSTREAM_BOOTSTRAP_BIN': self.slipstream_configuration.get('clientBootstrapURL'),
+                         'SLIPSTREAM_BUNDLE_URL': self.slipstream_configuration.get('clientURL')
+                             .replace('.tgz', '-cimi.tgz'),
+                         'SLIPSTREAM_BOOTSTRAP_BIN': self.slipstream_configuration.get('clientBootstrapURL')
+                             .replace('.bootstrap', '-cimi.bootstrap'),
                          'SLIPSTREAM_USERNAME': deployment_owner,
                          'SLIPSTREAM_API_KEY': deployment_ss_key,
                          'SLIPSTREAM_API_SECRET': deployment_ss_secret,
@@ -285,8 +286,9 @@ class DeploymentStartJob(object):
             self.create_deployment_parameter(deployment_owner, 'url.service', None, node_name)
             self.create_deployment_parameter(deployment_owner, 'ss:url.service')
             self.create_deployment_parameter(deployment_owner, 'statecustom', None, node_name)
+            self.create_deployment_parameter(deployment_owner, NodeDecorator.COMPLETE_KEY, None, node_name)
 
-            node_values = {NodeDecorator.INSTANCEID_KEY: node.get_cloud_node_id(),
+            node_values = {NodeDecorator.INSTANCEID_KEY: node.get_instance_id(),
                            'hostname': node.get_cloud_node_ip()}
             for param in module['content'].get('outputParameters', []) + module['content'].get('inputParameters', []):
                 value = param.get('value')
