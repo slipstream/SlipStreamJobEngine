@@ -7,6 +7,8 @@ try:
 except ImportError:
     pass  # PY3
 
+import uuid
+
 from ..util import load_module
 from ..actions import action
 
@@ -34,6 +36,13 @@ def try_extract_number(input):
         val = int(float(input))
     finally:
         return val
+
+
+def kb_from_data_uuid(text):
+    class NullNameSpace:
+        bytes = b''
+
+    return str(uuid.uuid3(NullNameSpace, text))
 
 
 @action('stop_deployment')
@@ -106,7 +115,8 @@ class DeploymentStopJob(object):
 
         self.logger.warning(instance_ids)
         connector_instance.stop_vms_by_ids(instance_ids)
-
+        id_state = 'deployment-parameter/{}'.format(kb_from_data_uuid(':'.join([self.deployment['id'],'','ss:state'])))
+        self.ss_api.cimi_edit(id_state, {'value': 'Done'})
         self.ss_api.cimi_edit(self.deployment['id'], {'state': 'STOPPED'})
 
         return 0
