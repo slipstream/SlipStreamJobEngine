@@ -278,6 +278,7 @@ class VirtualMachinesCollectJob(object):
                                     'resource:disk': service_offer.get('', vm_disk),
                                     'resource:instanceType': service_offer.get('', vm_instanceType),
                                     'resource:type': service_offer.get('resource:type', None),
+                                    'price:currency': service_offer.get('price:currency', None),
                                     'price:unitCost': service_offer.get('price:unitCost', None),
                                     'price:billingPeriodCode': service_offer.get('price:billingPeriodCode', None),
                                     'price:freeUnits': service_offer.get('price:freeUnits', None),
@@ -315,7 +316,10 @@ class VirtualMachinesCollectJob(object):
 
         self.job.set_progress(40)
 
-        if len(vms) > 0:
+        vms_count = len(vms)
+
+        if vms_count > 0:
+            self.logger.info('Visible virtual machines for {}: {}'.format(self.cloud_credential['id'], vms_count))
             map(self.handle_vm, vms)
         else:
             self.logger.info('No VMs to collect.')
