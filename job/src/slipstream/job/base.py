@@ -10,7 +10,7 @@ import sys
 import threading
 import signal
 from functools import partial
-from kazoo.client import KazooClient
+from kazoo.client import KazooClient, KazooRetry
 from slipstream.api import Api
 
 from .util import assure_path_exists, print_stack
@@ -100,7 +100,8 @@ class Base(object):
         self.ss_api = Api(endpoint=self.args.ss_url, insecure=self.args.ss_insecure, reauthenticate=True)
         self.ss_api.login_internal(self.args.ss_user, self.args.ss_pass)
 
-        self._kz = KazooClient(self.args.zk_hosts)
+        self._kz = KazooClient(self.args.zk_hosts, connection_retry=KazooRetry(max_tries=-1),
+                               command_retry=KazooRetry(max_tries=-5), timeout=30.0)
         self._kz.start()
 
         self.do_work()
