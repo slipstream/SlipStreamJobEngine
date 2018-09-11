@@ -118,6 +118,9 @@ class VirtualMachinesCollectJob(object):
                 return True
         return False
 
+    def is_billable(self, vm_state):
+        return vm_state.lower() in ['running', 'pending']     
+
     @staticmethod
     def dict2tuple(d, *keys):
         return tuple([d[k] for k in keys])
@@ -270,6 +273,7 @@ class VirtualMachinesCollectJob(object):
                    'connector': {'href': self.cloud_name},
                    'instanceID': vm_id,
                    'state': vm_state.lower(),
+                   'billable': is_billable(vm_state),
                    'credentials': [{'href': self.cloud_credential['id']}],
                    'acl': {'owner': {'type': 'ROLE', 'principal': 'ADMIN'}},
                    'serviceOffer': {'href': service_offer.get('id'),
