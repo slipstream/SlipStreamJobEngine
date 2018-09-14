@@ -4,6 +4,8 @@ from __future__ import print_function
 
 import boto3
 
+import logging
+
 try:
     from itertools import izip as zip  # PY2
 except ImportError:
@@ -21,8 +23,6 @@ class StorageBucketsCollectJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = job.ss_api
-        self.logger = job.logger
-        self.timeout = 1800  # seconds job should terminate in maximum 30 minutes
 
         self._cloud_name = None
         self._cloud_credential = None
@@ -115,11 +115,11 @@ class StorageBucketsCollectJob(object):
     def create_storage_bucket(self, json_resource):
         try:
             cimi_storage_bucket_id = self.ss_api.cimi_add('storageBuckets', json_resource).json.get('resource-id')
-            self.logger.info('Added new storage bucket: {}.'.format(cimi_storage_bucket_id))
+            logging.info('Added new storage bucket: {}.'.format(cimi_storage_bucket_id))
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 cimi_storage_bucket_id = e.response.json()['resource-id']
-                self.logger.info('Storage bucket {} creation issue due to {}.'.format(cimi_storage_bucket_id, e))
+                logging.info('Storage bucket {} creation issue due to {}.'.format(cimi_storage_bucket_id, e))
             else:
                 raise e
 
@@ -139,20 +139,20 @@ class StorageBucketsCollectJob(object):
         new_credentials = [{'href': c['id']} for c in cimi_cloud_credentials]
 
         if not self.cred_exist_already(existing_sb):
-            self.logger.debug(
+            logging.debug(
                 'Credential {} will be appended to existing storage bucket {}.'.format(self.cloud_credential['id'],
                                                                                        sb_id))
             new_credentials.append({'href': self.cloud_credential['id']})
 
         json_resource['credentials'] = new_credentials
 
-        self.logger.info('Update existing storage bucket: {}.'.format(sb_id))
+        logging.info('Update existing storage bucket: {}.'.format(sb_id))
         try:
             self.ss_api.cimi_edit(sb_id, json_resource)
         except SlipStreamError as e:
             if e.response.status_code == 409:
                 # Could happen when sb is beeing updated at same time by different thread
-                self.logger.info('Storage bucket update conflict of {}.').format(sb_id)
+                logging.info('Storage bucket update conflict of {}.').format(sb_id)
                 random_wait(0.5, 5.0)
                 self.update_storage_bucket(json_resource,
                                            self._get_existing_storage_bucket(json_resource["bucketName"]))
@@ -180,7 +180,7 @@ class StorageBucketsCollectJob(object):
                   'price:currency': service_offer[0].json['price:currency'],
                   'price:unitCost': service_offer[0].json['price:unitCost'],
                   'resource:platform': service_offer[0].json['resource:platform'],
-                  'resource:type':service_offer[0].json['resource:type'],
+                  'resource:type': service_offer[0].json['resource:type'],
                   'price:billingUnit': service_offer[0].json['price:billingUnit']}
         else:
             so = {'href': "service-offer/unknown"}
@@ -209,7 +209,7 @@ class StorageBucketsCollectJob(object):
         self.job.add_affected_resource(cimi_sb_id)
 
     def collect_storage_buckets(self):
-        self.logger.info('Collect storage buckets started for {}.'.format(self.cloud_credential['id']))
+        logging.info('Collect storage buckets started for {}.'.format(self.cloud_credential['id']))
 
         s3_endpoint = self.connector_s3_endpoint
 

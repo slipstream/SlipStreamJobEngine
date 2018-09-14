@@ -4,7 +4,9 @@ from __future__ import print_function
 
 from slipstream.api import SlipStreamError, ConnectionError
 
-from .util import wait
+from .util import wait, retry_kazoo_queue_op
+
+import logging
 
 
 class NonexistentJobError(Exception):
@@ -15,35 +17,32 @@ class NonexistentJobError(Exception):
 
 class Job(dict):
 
-    def __init__(self, ss_api, queue, logger):
+    def __init__(self, ss_api, queue):
         self.nothing_to_do = False
         self.id = None
         self.queue = queue
         self.ss_api = ss_api
-        self.logger = logger
         try:
             self.id = queue.get()
             cimi_job = self.get_cimi_job(self.id)
             dict.__init__(self, cimi_job)
             if self.is_in_final_state():
-                result = queue.consume()
-                self.logger.warning('Newly retrieved {} already in final state! '.format(self.id) +
-                                    'Removed from queue: success {}.'.format(result))
+                retry_kazoo_queue_op(queue, "consume")
+                logging.warning('Newly retrieved {} already in final state! Removed from queue.'.format(self.id))
                 self.nothing_to_do = True
             elif self.get('state') == 'RUNNING':
                 # could happen when updating job and cimi server is down! let job actions decide what to do with it.
-                self.logger.warning('Newly retrieved {} in running state!'.format(self.id))
+                logging.warning('Newly retrieved {} in running state!'.format(self.id))
         except NonexistentJobError as e:
-            result = queue.consume()
-            self.logger.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
-                                'Message: {}; Removed from queue: success {}.'.format(result, e.reason))
+            retry_kazoo_queue_op(queue, "consume")
+            logging.warning('Newly retrieved {} does not exist in cimi; '.format(self.id) +
+                            'Message: {}; Removed from queue: success.'.format(e.reason))
             self.nothing_to_do = True
         except:
             timeout = 120
-            result = queue.release()
-            self.logger.exception('Fatal error when trying to retrieve {}! '.format(self.id) +
-                                  'Put it back in queue: success {}. '.format(result) +
-                                  'Will go back to work after {}s.'.format(timeout))
+            retry_kazoo_queue_op(queue, "release")
+            logging.exception('Fatal error when trying to retrieve {}! Put it back in queue. '.format(self.id) +
+                              'Will go back to work after {}s.'.format(timeout))
             wait(timeout)
             self.nothing_to_do = True
 
@@ -57,7 +56,7 @@ class Job(dict):
             except SlipStreamError as e:
                 reason = e.reason
                 if e.response.status_code == 404:
-                    self.logger.warning(
+                    logging.warning(
                         'Retrieve of {} failed. Attempt: {} Will retry in {}s.'.format(job_uri, attempt, wait_time))
                     wait(wait_time)
                 else:
@@ -124,17 +123,16 @@ class Job(dict):
 
     def consume_when_final_state(self):
         if self.is_in_final_state():
-            result = self.queue.consume()
-            self.logger.info(
-                'Great, {} is now in final state; Removed from queue: success {}.'.format(self.id, result))
+            retry_kazoo_queue_op(self.queue, 'consume')
+            logging.info('Great, {} is now in final state; Removed from queue.'.format(self.id))
 
     def _edit_job(self, attribute_name, attribute_value):
         try:
             response = self.ss_api.cimi_edit(self.id, {attribute_name: attribute_value})
         except (SlipStreamError, ConnectionError):
-            result = self.queue.release()
-            self.logger.exception('Failed to update attribute "{}" for {}! '.format(attribute_name, self.id) +
-                                  'Put it back in queue: success: {}.'.format(result))
+            retry_kazoo_queue_op(self.queue, 'release')
+            logging.exception('Failed to update attribute "{}" for {}! '.format(attribute_name, self.id) +
+                              'Put it back in queue.')
         else:
             self.update(response.json)
             self.consume_when_final_state()
@@ -143,10 +141,9 @@ class Job(dict):
         try:
             response = self.ss_api.cimi_edit(self.id, attributes)
         except (SlipStreamError, ConnectionError):
-            result = self.queue.release()
-            msg = 'Failed to update following attributes "{}" for {}! '.format(attributes, self.id) + \
-                  'Put it back in queue: success: {}.'.format(result)
-            self.logger.exception(msg)
+            retry_kazoo_queue_op(self.queue, 'release')
+            msg = 'Failed to update following attributes "{}" for {}! Put it back in queue.'.format(attributes, self.id)
+            logging.exception(msg)
         else:
             self.update(response.json)
             self.consume_when_final_state()

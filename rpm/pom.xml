@@ -135,7 +135,20 @@
               <directoryIncluded>false</directoryIncluded>
               <sources>
                 <source>
-                  <location>${project.build.directory}/job/src/scripts/etc/</location>
+                  <location>${project.build.directory}/job/src/scripts/etc/systemd/</location>
+                </source>
+              </sources>
+            </mapping>
+
+            <mapping>
+              <directory>/etc/logrotate.d/</directory>
+              <filemode>0644</filemode>
+              <username>root</username>
+              <groupname>root</groupname>
+              <directoryIncluded>false</directoryIncluded>
+              <sources>
+                <source>
+                  <location>${project.build.directory}/job/src/scripts/etc/logrotate/</location>
                 </source>
               </sources>
             </mapping>
@@ -164,7 +177,6 @@
               fi
               pip install -Iv kazoo
               pip install -Iv elasticsearch
-              pip install -Iv stopit
               pip install -Iv boto3
             </script>
           </postinstallScriptlet>
