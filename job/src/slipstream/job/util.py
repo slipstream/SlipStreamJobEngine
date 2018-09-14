@@ -62,3 +62,22 @@ def retry_kazoo_queue_op(queue, function_name):
     while not getattr(queue, function_name)():
         random_wait(0.1, 5)
         logging.warn('Retrying {} on {}.'.format(function_name, queue.get()))
+
+
+connector_classes = {
+    'azure': 'slipstream_azure.AzureClientCloud',
+    'cloudstack': 'slipstream_cloudstack.CloudStackClientCloud',
+    'cloudstackadvancedzone': 'slipstream_cloudstack.CloudStackAdvancedZoneClientCloud',
+    'ec2': 'slipstream_ec2.Ec2ClientCloud',
+    'exoscale': 'slipstream_exoscale.ExoscaleClientCloud',
+    'nuvlabox': 'slipstream_nuvlabox.NuvlaBoxClientCloud',
+    'opennebula': 'slipstream_opennebula.OpenNebulaClientCloud',
+    'openstack': 'slipstream_openstack.OpenStackClientCloud',
+    'otc': 'slipstream_otc.OpenTelekomClientCloud',
+    'softlayer': 'slipstream_nativesoftlayer.NativeSoftLayerClientCloud',
+    'docker': 'slipstream_docker.DockerClientCloud'
+}
+
+
+def get_connector_class(connector_name):
+    return connector_classes[connector_name]

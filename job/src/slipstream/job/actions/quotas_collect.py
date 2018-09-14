@@ -2,25 +2,12 @@
 
 from __future__ import print_function
 
-from ..util import load_module, random_wait
+from ..util import load_module, random_wait, get_connector_class
 from ..actions import action
 
 from slipstream.api import SlipStreamError
 
 import logging
-
-connector_classes = {
-    'azure':                  'slipstream_azure.AzureClientCloud',
-    'cloudstack':             'slipstream_cloudstack.CloudStackClientCloud',
-    'cloudstackadvancedzone': 'slipstream_cloudstack.CloudStackAdvancedZoneClientCloud',
-    'ec2':                    'slipstream_ec2.Ec2ClientCloud',
-    'exoscale':               'slipstream_exoscale.ExoscaleClientCloud',
-    'nuvlabox':               'slipstream_nuvlabox.NuvlaBoxClientCloud',
-    'opennebula':             'slipstream_opennebula.OpenNebulaClientCloud',
-    'openstack':              'slipstream_openstack.OpenStackClientCloud',
-    'otc':                    'slipstream_otc.OpenTelekomClientCloud',
-    'softlayer':              'slipstream_nativesoftlayer.NativeSoftLayerClientCloud'
-}
 
 limits_aggregation = {
     "max_instances": "count:id",
@@ -88,7 +75,7 @@ class QuotasCollectJob(object):
 
     @property
     def connector(self):
-        return load_module(connector_classes[self.connector_name])
+        return load_module(get_connector_class(self.connector_name))
 
     @property
     def cloud_configuration(self):
