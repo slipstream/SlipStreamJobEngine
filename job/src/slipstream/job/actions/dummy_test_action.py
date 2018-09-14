@@ -11,8 +11,6 @@ class DummyTestActionJob(object):
     def __init__(self, executor, job):
         self.job = job
         self.ss_api = job.ss_api
-        self.logger = job.logger
-        self.timeout = 15  # seconds job should terminate in maximum 15 seconds
 
     @staticmethod
     def work_hard():

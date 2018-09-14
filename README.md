@@ -10,10 +10,9 @@ Facts:
 - Executor load actions dynamically at his startup
 - Zookeeper is used as a Locking queue containing only job uuid in /job/entries
 - Running jobs are put in zookeeper under /job/taken
-- If executor is unable to communicate with CIMI the job in running state is released.
+- If executor is unable to communicate with CIMI, the job in running state is released (put back in zookeeper queue).
 - The action implementation should take care if necessary to continue the execution or to make the cleanup of a unfinshed running job
 - If connection is lost with zookeeper /job/taken (executing jobs) will be released because this is ephemeral nodes.
-- For each action there is a configurable timeout. Executor will try to terminate the action after the timeout (stopit python lib).
 - Stopping the executor will try to make a proper shuttdown by waiting 2 minutes before killing the process. Each thread that terminate his running action will not take a new one.
 
 ## Run the slipstream executor
@@ -53,18 +52,28 @@ scripts/job_distributor_dummy_test_action.py.
 
 ## Logging
 
-Check `/var/log/slipstream/log/` folder. It's configured to rotate the files by size (~10MB) and to backup 5 times.
-
+Check `/var/log/slipstream/log/` folder.
 
 ## Debugging
 
-You can get a trace-back of all running threads in the log by sending a `SIGUSR1` signal to the process
+You can get a trace-back of all running threads using tools like `https://pyrasite.readthedocs.io`
 
-Example:
-`kill -s SIGUSR1 $PID`
+0. `pip install pyrasite`
 
-or
+1. Get python process PID of the executor e.g.
 
-`systemctl kill -s SIGUSR1 slipstream-job-executor.service`
+2. Connect to slipstream bash session: `su - slipstream`
 
-`systemctl kill -s SIGUSR1 slipstream-job-distributor@<...>.service`
+3. pyrasite-shell <PID>
+
+4. print traceback with entering code below into pyrasite repl
+```
+import sys
+import threading
+import traceback
+
+for th in threading.enumerate():
+    print(th)
+    traceback.print_stack(sys._current_frames()[th.ident])
+    print()
+```

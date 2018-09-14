@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import argparse
 import logging
-from logging.handlers import RotatingFileHandler
 import random
 import sys
 import threading
@@ -13,12 +12,8 @@ from functools import partial
 from kazoo.client import KazooClient, KazooRetry
 from slipstream.api import Api
 
-from .util import assure_path_exists, print_stack
-
 names = ['Cartman', 'Kenny', 'Stan', 'Kyle', 'Butters', 'Token', 'Timmy', 'Wendy', 'M. Garrison', 'Chef',
          'Randy', 'Ike', 'Mr. Mackey', 'Mr. Slave', 'Tweek', 'Craig']
-
-LOG_FILENAME = '/var/log/slipstream/job.log'
 
 
 class Base(object):
@@ -30,9 +25,10 @@ class Base(object):
         self.name = None
         self.stop_event = threading.Event()
 
+        self._init_logger()
+
         signal.signal(signal.SIGTERM, partial(Base.on_exit, self.stop_event))
         signal.signal(signal.SIGINT, partial(Base.on_exit, self.stop_event))
-        signal.signal(signal.SIGUSR1, print_stack)
 
     def _init_args_parser(self):
         parser = argparse.ArgumentParser(description='Process SlipStream jobs')
@@ -64,26 +60,16 @@ class Base(object):
         pass
 
     @staticmethod
-    def _init_logger(log_filename):
-        filename = '/var/log/slipstream/job/{}'.format(log_filename)
+    def _init_logger():
+        format_log = logging.Formatter('%(asctime)s - %(levelname)s - %(threadName)s - '
+                                       '%(filename)s:%(lineno)s - %(message)s')
         logger = logging.getLogger()
+        logger.handlers[0].setFormatter(format_log)
         logger.setLevel(logging.INFO)
         logging.getLogger('kazoo').setLevel(logging.WARN)
         logging.getLogger('elasticsearch').setLevel(logging.WARN)
         logging.getLogger('slipstream').setLevel(logging.INFO)
         logging.getLogger('urllib3').setLevel(logging.WARN)
-        logging.getLogger('stopit').setLevel(logging.ERROR)
-        assure_path_exists(filename)
-        handler_file = RotatingFileHandler(filename, mode='a', maxBytes=10485760, backupCount=5)
-        log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(filename)s:%(lineno)s - %(message)s')
-        handler_file.setFormatter(log_format)
-        handler_console = logging.StreamHandler()
-        handler_console.setFormatter(log_format)
-        logger.addHandler(handler_file)
-        logger.addHandler(handler_console)
-
-    def _log_msg(self, message, name=None):
-        return ' {} - {}'.format(name or self.name, message)
 
     @staticmethod
     def on_exit(stop_event, signum, frame):
@@ -101,7 +87,7 @@ class Base(object):
         self.ss_api.login_internal(self.args.ss_user, self.args.ss_pass)
 
         self._kz = KazooClient(self.args.zk_hosts, connection_retry=KazooRetry(max_tries=-1),
-                               command_retry=KazooRetry(max_tries=-5), timeout=30.0)
+                               command_retry=KazooRetry(max_tries=-1), timeout=30.0)
         self._kz.start()
 
         self.do_work()

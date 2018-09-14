@@ -1,0 +1,17 @@
+[Unit]
+Description=SlipStream Job Distributor On %I
+After=syslog.target network-online.target
+
+[Service]
+EnvironmentFile=-/etc/default/slipstream-job-distributor
+ExecStart=/bin/sh -c "/opt/slipstream/job/sbin/job_distributor_%i.py $DAEMON_ARGS 2>>/var/log/slipstream/job/distributor_%i.log  1>/dev/null"
+TimeoutStopSec=10
+RestartSec=5
+Restart=on-failure
+User=slipstream
+Group=slipstream
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

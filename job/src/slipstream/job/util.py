@@ -4,13 +4,10 @@ from __future__ import print_function
 
 import os
 import sys
-import signal
 import random
 import warnings
-import threading
-import traceback
 import logging
-import pprint
+import threading
 
 PY2 = sys.version_info[0] == 2
 
@@ -22,13 +19,6 @@ def wait(secs):
 
 def random_wait(secs_min, secs_max):
     wait(random.uniform(secs_min, secs_max))
-
-
-def print_stack(signum, frame):
-    for th in threading.enumerate():
-        trace = traceback.extract_stack(sys._current_frames()[th.ident])
-        logging.error('thread {}:\n{}'.format(th.getName(), pprint.pformat(trace)))
-    signal.signal(signal.SIGUSR1, print_stack)
 
 
 class InterruptException(Exception):
@@ -66,3 +56,9 @@ def assure_path_exists(path):
     dir = os.path.dirname(path)
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+
+def retry_kazoo_queue_op(queue, function_name):
+    while not getattr(queue, function_name)():
+        random_wait(0.1, 5)
+        logging.warn('Retrying {} on {}.'.format(function_name, queue.get()))
