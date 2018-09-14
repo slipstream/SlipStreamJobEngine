@@ -18,7 +18,8 @@ class CollectVmsDistributor(Distributor):
         self.collect_interval = 60.0
 
     def _get_credentials(self):
-        response = self.ss_api.cimi_search('credentials', filter='type^="cloud-cred-"')
+        response = self.ss_api.cimi_search('credentials',
+                                           filter='(type ^= "cloud-cred-") and (disabledMonitoring != true)')
         return response.json.get('credentials')
 
     @staticmethod
