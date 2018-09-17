@@ -7,7 +7,7 @@ try:
 except ImportError:
     pass  # PY3
 
-from ..util import load_module, random_wait, get_connector_class
+from ..util import load_module, random_wait, connector_classes
 
 from ..actions import action
 
@@ -74,7 +74,7 @@ class VirtualMachinesCollectJob(object):
 
     @property
     def connector(self):
-        return load_module(get_connector_class(self.connector_name))
+        return load_module(connector_classes[self.connector_name])
 
     @property
     def connector_instance(self):

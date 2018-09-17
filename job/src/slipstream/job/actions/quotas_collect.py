@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-from ..util import load_module, random_wait, get_connector_class
+from ..util import load_module, random_wait, connector_classes
 from ..actions import action
 
 from slipstream.api import SlipStreamError
@@ -75,7 +75,7 @@ class QuotasCollectJob(object):
 
     @property
     def connector(self):
-        return load_module(get_connector_class(self.connector_name))
+        return load_module(connector_classes[self.connector_name])
 
     @property
     def cloud_configuration(self):

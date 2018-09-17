@@ -22,9 +22,9 @@ class CollectQuotasDistributor(Distributor):
         self.collect_interval = 1800
 
     def _get_credentials(self):
-        response = self.ss_api.cimi_search('credentials',
+        response = self.ss_api.cimi_search('credentials', select='id',
                                            filter='type^="%s"' % '" or type^="'.join(credential_types.values()))
-        return response.json.get('credentials')
+        return response.resources_list
 
     @override
     def job_generator(self):
@@ -35,15 +35,15 @@ class CollectQuotasDistributor(Distributor):
             for cred in credentials:
                 pending_jobs = \
                     self.ss_api.cimi_search('jobs', filter='action="{}" and targetResource/href="{}" and state="QUEUED"'
-                                            .format(CollectQuotasDistributor.ACTION_NAME, cred['id']), last=0)
+                                            .format(CollectQuotasDistributor.ACTION_NAME, cred.id), last=0)
 
                 if pending_jobs.json['count'] == 0:
                     job = {'action': CollectQuotasDistributor.ACTION_NAME,
-                           'targetResource': {'href': cred['id']}}
+                           'targetResource': {'href': cred.id}}
                     yield job
                 else:
                     logging.debug('Action {} already queued, will not create a new job for {}.'
-                                  .format(CollectQuotasDistributor.ACTION_NAME, cred['id']))
+                                  .format(CollectQuotasDistributor.ACTION_NAME, cred.id))
 
             time.sleep(self.collect_interval - (time.time() - start_time))
 

@@ -18,9 +18,9 @@ class CollectVmsDistributor(Distributor):
         self.collect_interval = 60.0
 
     def _get_credentials(self):
-        response = self.ss_api.cimi_search('credentials',
+        response = self.ss_api.cimi_search('credentials', select='id',
                                            filter='(type ^= "cloud-cred-") and (disabledMonitoring != true)')
-        return response.json.get('credentials')
+        return response.resources_list
 
     @staticmethod
     def _time_spent(start_time):
@@ -42,14 +42,14 @@ class CollectVmsDistributor(Distributor):
             for credential in credentials:
                 pending_jobs = \
                     self.ss_api.cimi_search('jobs', filter='action="{}" and targetResource/href="{}" and state="QUEUED"'
-                                            .format(CollectVmsDistributor.ACTION_NAME, credential['id']), last=0)
-                if pending_jobs.json['count'] == 0:
+                                            .format(CollectVmsDistributor.ACTION_NAME, credential.id), last=0)
+                if pending_jobs.count == 0:
                     job = {'action': CollectVmsDistributor.ACTION_NAME,
-                           'targetResource': {'href': credential['id']}}
+                           'targetResource': {'href': credential.id}}
                     yield job
                 else:
                     logging.debug('Action {} already queued, will not create a new job for {}.'
-                                      .format(CollectVmsDistributor.ACTION_NAME, credential['id']))
+                                  .format(CollectVmsDistributor.ACTION_NAME, credential.id))
 
                 time.sleep(yield_interval)
             time.sleep(self._time_left(start_time))

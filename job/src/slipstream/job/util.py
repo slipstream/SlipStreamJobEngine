@@ -77,7 +77,3 @@ connector_classes = {
     'softlayer': 'slipstream_nativesoftlayer.NativeSoftLayerClientCloud',
     'docker': 'slipstream_docker.DockerClientCloud'
 }
-
-
-def get_connector_class(connector_name):
-    return connector_classes[connector_name]

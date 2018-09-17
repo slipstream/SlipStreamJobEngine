@@ -29,9 +29,9 @@ class CollectStorageBucketsDistributor(Distributor):
         self.collect_interval = 60.0
 
     def _get_credentials(self):
-        response = self.ss_api.cimi_search('credentials',
+        response = self.ss_api.cimi_search('credentials', select='id, type, key',
                                            filter='type^="%s"' % '" or type^="'.join(credential_types.values()))
-        return response.json.get('credentials')
+        return response.resources_list
 
     @staticmethod
     def _time_spent(start_time):
@@ -60,17 +60,17 @@ class CollectStorageBucketsDistributor(Distributor):
 
             for credential in credentials:
                 endpoint = None
-                if credential["type"] == special_cloud:
+                if credential.type == special_cloud:
                     # This workaround is because Exoscale does not seem to 
                     # distinguish the buckets between different endpoints, so we'll just use one
                     endpoint = special_endpoint
-                    if credential["key"] in api_key_list:
+                    if credential.key in api_key_list:
                         continue
                     else:
-                        api_key_list.append(credential["key"])
+                        api_key_list.append(credential.key)
 
                 filter_jobs = 'action="{}" and targetResource/href="{}" and (state="QUEUED" or state="RUNNING")' \
-                    .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id'])
+                    .format(CollectStorageBucketsDistributor.ACTION_NAME, credential.id)
                 pending_running_jobs = self.ss_api.cimi_search('jobs', filter=filter_jobs, last=0)
                 if pending_running_jobs.json['count'] == 0:
                     # TODO: waiting for https://github.com/slipstream/SlipStreamServer/issues/1639
@@ -82,11 +82,11 @@ class CollectStorageBucketsDistributor(Distributor):
                         continue
 
                     job = {'action': CollectStorageBucketsDistributor.ACTION_NAME,
-                           'targetResource': {'href': credential['id']}}
+                           'targetResource': {'href': credential.id}}
                     yield job
                 else:
                     logging.debug('Action {} already queued or running, will not create a new job for {}.'
-                                  .format(CollectStorageBucketsDistributor.ACTION_NAME, credential['id']))
+                                  .format(CollectStorageBucketsDistributor.ACTION_NAME, credential.id))
 
                 time.sleep(yield_interval)
             time.sleep(self._time_left(start_time))
