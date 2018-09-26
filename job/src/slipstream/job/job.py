@@ -15,6 +15,12 @@ class NonexistentJobError(Exception):
         self.reason = reason
 
 
+class JobUpdateError(Exception):
+    def __init__(self, reason):
+        super(JobUpdateError, self).__init__(reason)
+        self.reason = reason
+
+
 class Job(dict):
 
     def __init__(self, ss_api, queue):
@@ -131,8 +137,8 @@ class Job(dict):
             response = self.ss_api.cimi_edit(self.id, {attribute_name: attribute_value})
         except (SlipStreamError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
-            logging.exception('Failed to update attribute "{}" for {}! '.format(attribute_name, self.id) +
-                              'Put it back in queue.')
+            reason = 'Failed to update attribute "{}" for {}! Put it back in queue.'.format(attribute_name, self.id)
+            raise JobUpdateError(reason)
         else:
             self.update(response.json)
             self.consume_when_final_state()
@@ -142,8 +148,9 @@ class Job(dict):
             response = self.ss_api.cimi_edit(self.id, attributes)
         except (SlipStreamError, ConnectionError):
             retry_kazoo_queue_op(self.queue, 'release')
-            msg = 'Failed to update following attributes "{}" for {}! Put it back in queue.'.format(attributes, self.id)
-            logging.exception(msg)
+            reason = 'Failed to update following attributes "{}" for {}! '.format(attributes, self.id) \
+                     + 'Put it back in queue.'
+            raise JobUpdateError(reason)
         else:
             self.update(response.json)
             self.consume_when_final_state()

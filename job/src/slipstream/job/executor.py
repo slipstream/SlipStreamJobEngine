@@ -9,7 +9,7 @@ from threading import Thread
 
 from .actions import get_action, ActionNotImplemented
 from .base import Base
-from .job import Job
+from .job import Job, JobUpdateError
 from .util import override
 
 
@@ -24,6 +24,16 @@ class Executor(Base):
                             metavar='#', type=int, help='Number of worker threads to start (default: 1)')
         parser.add_argument('--es-hosts-list', dest='es_hosts_list', default=['localhost'],
                             nargs='+', metavar='HOST', help='Elasticsearch list of hosts (default: [localhost])')
+
+    def _get_action_instance(self, job):
+        if 'action' not in job:
+            raise Exception('Invalid job: {}.'.format(job))
+        action_name = job.get('action')
+        action = get_action(action_name)
+        if not action:
+            raise ActionNotImplemented(action_name)
+
+        return action(self, job)
 
     def _process_jobs(self):
         queue = self._kz.LockingQueue('/job')
@@ -41,13 +51,17 @@ class Executor(Base):
             logging.info('Got new {}.'.format(job.id))
 
             try:
-                return_code = self.job_processor(job)
+                action_instance = self._get_action_instance(job)
+                job.set_state('RUNNING')
+                return_code = action_instance.do_work()
             except ActionNotImplemented as e:
                 logging.exception('Action "{}" not implemented'.format(str(e)))
                 # Consume not implemented action to avoid queue to be filled with not implemented actions
                 msg = 'Not implemented action'.format(job.id)
                 status_message = '{}: {}'.format(msg, str(e))
                 job.update_job(state='FAILED', status_message=status_message)
+            except JobUpdateError as e:
+                logging.exception('{} update error: {}'.format(job.id, str(e)))
             except Exception as e:
                 logging.exception('Failed to process {}.'.format(job.id))
                 status_message = '{}'.format(str(e))
@@ -56,25 +70,6 @@ class Executor(Base):
                 job.update_job(state='SUCCESS', return_code=return_code)
                 logging.info('Successfully finished {}.'.format(job.id))
         logging.info('Thread properly stopped.')
-
-    def job_processor(self, job):
-        if not job or 'action' not in job:
-            logging.warning('Invalid job: {}.'.format(job))
-
-        action_name = job.get('action')
-        action = get_action(action_name)
-
-        if not action:
-            raise ActionNotImplemented(action_name)
-
-        logging.debug('Processing {}.'.format(job.id))
-        job.set_state('RUNNING')
-        try:
-            action_instance = action(self, job)
-            return action_instance.do_work()
-        except:
-            logging.exception('Processing failed for {}.'.format(job.id))
-            raise
 
     @override
     def do_work(self):
