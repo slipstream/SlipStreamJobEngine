@@ -239,6 +239,11 @@ class DeploymentStartJob(object):
         if node.get_cloud_node_ssh_keypair_name():
             self.set_deployment_parameter('keypair.name', node.get_cloud_node_ssh_keypair_name(), node_instance_name)
 
+        if node.get_cloud_node_ports_mapping():
+            self.create_deployment_parameter(deployment_owner, NodeDecorator.CLOUD_NODE_PORTS_MAPPING_KEY,
+                                             node.get_cloud_node_ports_mapping(), node_instance_name,
+                                             "Published ports mappings")
+
         self.set_deployment_parameter('hostname', node.get_cloud_node_ip(), node_instance_name)
         self.set_deployment_parameter(NodeDecorator.INSTANCEID_KEY, node.get_instance_id(), node_instance_name)
 
