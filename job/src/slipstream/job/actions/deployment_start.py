@@ -174,6 +174,7 @@ class DeploymentStartJob(object):
         node_params = self.get_node_parameters(self.module['content'])
         self.create_deployment_parameters(node_instance_name, node_params.values())
         cloud_credential_id = node_params['credential.id']['value']
+        published_ports = node_params['cloud.node.publish.ports'].get('value', None)
 
         cloud_credential = self.ss_api.cimi_get(cloud_credential_id).json
         cloud_href = cloud_credential['connector']['href']
@@ -193,24 +194,29 @@ class DeploymentStartJob(object):
 
         module = self.deployment['module']
 
+        cpu = DeploymentStartJob.lookup_recursively_module(module, ['content', 'cpu'])
+        ram = DeploymentStartJob.lookup_recursively_module(module, ['content', 'ram'])
         disk = DeploymentStartJob.lookup_recursively_module(module, ['content', 'disk'])
         image_id = DeploymentStartJob.lookup_recursively_module(module, ['content', 'imageIDs', cloud_instance_name])
         network_type = DeploymentStartJob.lookup_recursively_module(module, ['content', 'networkType'])
         login_user = DeploymentStartJob.lookup_recursively_module(module, ['content', 'loginUser'])
 
         node = NodeInstance({
+            '{}.cpu'.format(cloud_instance_name): str(cpu),
+            '{}.ram'.format(cloud_instance_name): str(ram),
             '{}.disk'.format(cloud_instance_name): str(disk),
+            '{}.publish'.format(cloud_instance_name): published_ports.split() if published_ports else [],
             '{}.security.groups'.format(cloud_instance_name): 'slipstream_managed',
             '{}.networks'.format(cloud_instance_name): '',
             '{}.instance.type'.format(cloud_instance_name): 'Micro',
-            # search for service offer should occur when creating the deployment template
             'image.platform': 'linux',
             'network': network_type,
             'cloudservice': cloud_instance_name,
             'image.id': image_id,
             'image.imageId': image_id,
             'node_instance_name': node_instance_name,
-            'image.loginUser': login_user})
+            'image.loginUser': login_user
+        })
 
         node_context = {'SLIPSTREAM_DIID': self.deployment.get('id'),
                         'SLIPSTREAM_SERVICEURL': self.slipstream_configuration.get('serviceURL'),
