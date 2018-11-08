@@ -227,8 +227,8 @@ class DeploymentStartJob(object):
                         'SLIPSTREAM_BOOTSTRAP_BIN': self.slipstream_configuration.get('clientBootstrapURL')
                             .replace('.bootstrap', '-cimi.bootstrap'),
                         'SLIPSTREAM_USERNAME': deployment_owner,
-                        'SLIPSTREAM_API_KEY': self.deployment['clientApiKey']['href'],
-                        'SLIPSTREAM_API_SECRET': self.deployment['clientApiKey']['secret'],
+                        'SLIPSTREAM_API_KEY': self.deployment['clientAPIKey']['href'],
+                        'SLIPSTREAM_API_SECRET': self.deployment['clientAPIKey']['secret'],
                         'SLIPSTREAM_SS_CACHE_KEY': self.deployment.get('id')
                         }
 
