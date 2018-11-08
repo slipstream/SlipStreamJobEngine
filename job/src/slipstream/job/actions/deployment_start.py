@@ -188,7 +188,10 @@ class DeploymentStartJob(object):
 
         user_info.set_public_keys(ssh_pub_key)
 
-        self.ss_api.cimi_edit(self.deployment['id'], {'sshPublicKeys': ssh_pub_key})
+        ssh_pub_keys = filter(None, [x.strip() for x in ssh_pub_key.splitlines()])
+
+        if ssh_pub_keys:
+            self.ss_api.cimi_edit(self.deployment['id'], {'sshPublicKeys': ssh_pub_keys})
 
         deployment_owner = self.deployment['acl']['owner']['principal']
 
