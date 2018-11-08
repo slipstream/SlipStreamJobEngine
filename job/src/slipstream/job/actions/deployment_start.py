@@ -188,7 +188,10 @@ class DeploymentStartJob(object):
 
         user_info.set_public_keys(ssh_pub_key)
 
-        self.ss_api.cimi_edit(self.deployment['id'], {'sshPublicKeys': ssh_pub_key})
+        ssh_pub_keys = filter(None, [x.strip() for x in ssh_pub_key.splitlines()])
+
+        if ssh_pub_keys:
+            self.ss_api.cimi_edit(self.deployment['id'], {'sshPublicKeys': ssh_pub_keys})
 
         deployment_owner = self.deployment['acl']['owner']['principal']
 
@@ -227,8 +230,8 @@ class DeploymentStartJob(object):
                         'SLIPSTREAM_BOOTSTRAP_BIN': self.slipstream_configuration.get('clientBootstrapURL')
                             .replace('.bootstrap', '-cimi.bootstrap'),
                         'SLIPSTREAM_USERNAME': deployment_owner,
-                        'SLIPSTREAM_API_KEY': self.deployment['clientApiKey']['href'],
-                        'SLIPSTREAM_API_SECRET': self.deployment['clientApiKey']['secret'],
+                        'SLIPSTREAM_API_KEY': self.deployment['clientAPIKey']['href'],
+                        'SLIPSTREAM_API_SECRET': self.deployment['clientAPIKey']['secret'],
                         'SLIPSTREAM_SS_CACHE_KEY': self.deployment.get('id')
                         }
 

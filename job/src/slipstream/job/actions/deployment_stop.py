@@ -72,8 +72,8 @@ class DeploymentStopJob(object):
     def handle_deployment(self):
         api_key = None
         try:
-            api_key = self.deployment['clientApiKey']['href']
-            self.ss_api.cimi_delete(self.deployment['clientApiKey']['href'])
+            api_key = self.deployment['clientAPIKey']['href']
+            self.ss_api.cimi_delete(self.deployment['clientAPIKey']['href'])
         except Exception as e:
             logging.exception('Something went wrong during cleanup of api key {}: {}.'.format(api_key, e))
 
