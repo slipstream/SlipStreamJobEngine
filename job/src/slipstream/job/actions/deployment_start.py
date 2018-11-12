@@ -127,18 +127,6 @@ class DeploymentStartJob(object):
         self.ss_api.cimi_edit(deployment_parameter_href, {'value': param_value})
 
     @staticmethod
-    def lookup_recursively_module(module, keys):  # FIXME: support for array of maps
-        temp = module
-        for k in keys[:-1]:
-            temp = temp.get(k, {})
-        value = temp.get(keys[-1])
-        if value:
-            return value
-        module_parent = module.get('content', {}).get('parent')
-        if module_parent:
-            return DeploymentStartJob.lookup_recursively_module(module_parent, keys)
-
-    @staticmethod
     def get_node_parameters(module):
         all_module_params_merged = {}
         local_module = module
@@ -170,10 +158,12 @@ class DeploymentStartJob(object):
                                              param_description=param['description'])
 
     def handle_deployment(self):
-        node_instance_name = 'machine-{}'.format(self.deployment['id'].replace('deployment/', ''))
+        node_instance_name = 'machine'
         node_params = self.get_node_parameters(self.module['content'])
         self.create_deployment_parameters(node_instance_name, node_params.values())
-        cloud_credential_id = node_params['credential.id']['value']
+        cloud_credential_id = node_params['credential.id'].get('value')
+        if cloud_credential_id is None:
+            raise ValueError("Credential is not set!")
         published_ports = node_params['cloud.node.publish.ports'].get('value', None)
 
         cloud_credential = self.ss_api.cimi_get(cloud_credential_id).json
@@ -195,18 +185,18 @@ class DeploymentStartJob(object):
 
         deployment_owner = self.deployment['acl']['owner']['principal']
 
-        module = self.deployment['module']
+        module_content = self.deployment['module'].get('content', {})
 
-        cpu = DeploymentStartJob.lookup_recursively_module(module, ['content', 'cpu'])
-        ram = DeploymentStartJob.lookup_recursively_module(module, ['content', 'ram'])
-        disk = DeploymentStartJob.lookup_recursively_module(module, ['content', 'disk'])
-        image_id = DeploymentStartJob.lookup_recursively_module(module, ['content', 'imageIDs', cloud_instance_name])
-        network_type = DeploymentStartJob.lookup_recursively_module(module, ['content', 'networkType'])
-        login_user = DeploymentStartJob.lookup_recursively_module(module, ['content', 'loginUser'])
+        cpu = module_content.get('cpu')
+        ram = module_content.get('ram')
+        disk = module_content.get('disk')
+        image_id = module_content.get('imageIDs', {}).get(cloud_instance_name)
+        network_type = module_content.get('networkType')
+        login_user = module_content.get('loginUser')
 
         node = NodeInstance({
             '{}.cpu'.format(cloud_instance_name): str(cpu),
-            '{}.ram'.format(cloud_instance_name): str(ram),
+            '{}.ram'.format(cloud_instance_name): str(ram / 1024),
             '{}.disk'.format(cloud_instance_name): str(disk),
             '{}.publish'.format(cloud_instance_name): published_ports.split() if published_ports else [],
             '{}.security.groups'.format(cloud_instance_name): 'slipstream_managed',
