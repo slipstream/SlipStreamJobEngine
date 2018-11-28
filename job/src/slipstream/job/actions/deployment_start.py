@@ -164,7 +164,6 @@ class DeploymentStartJob(object):
         cloud_credential_id = node_params['credential.id'].get('value')
         if cloud_credential_id is None:
             raise ValueError("Credential is not set!")
-        published_ports = node_params['cloud.node.publish.ports'].get('value', None)
 
         cloud_credential = self.ss_api.cimi_get(cloud_credential_id).json
         cloud_href = cloud_credential['connector']['href']
@@ -193,12 +192,13 @@ class DeploymentStartJob(object):
         image_id = module_content.get('imageIDs', {}).get(cloud_instance_name)
         network_type = module_content.get('networkType')
         login_user = module_content.get('loginUser')
+        ports = module_content.get('ports', '').strip()
 
         node = NodeInstance({
             '{}.cpu'.format(cloud_instance_name): str(cpu),
             '{}.ram'.format(cloud_instance_name): str(ram / 1024),
             '{}.disk'.format(cloud_instance_name): str(disk),
-            '{}.publish'.format(cloud_instance_name): published_ports.split() if published_ports else [],
+            '{}.publish'.format(cloud_instance_name): ports.split() if ports else [],
             '{}.security.groups'.format(cloud_instance_name): 'slipstream_managed',
             '{}.networks'.format(cloud_instance_name): '',
             '{}.instance.type'.format(cloud_instance_name): 'Micro',
@@ -239,9 +239,11 @@ class DeploymentStartJob(object):
             self.set_deployment_parameter('keypair.name', node.get_cloud_node_ssh_keypair_name(), node_instance_name)
 
         if node.get_cloud_node_ports_mapping():
-            self.create_deployment_parameter(deployment_owner, NodeDecorator.CLOUD_NODE_PORTS_MAPPING_KEY,
-                                             node.get_cloud_node_ports_mapping(), node_instance_name,
-                                             "Published ports mappings")
+            for port in node.get_cloud_node_ports_mapping().split():
+                port_details = port.split(':')
+                self.create_deployment_parameter(deployment_owner, '.'.join([port_details[0], port_details[2]]),
+                                                 port_details[1], node_instance_name,
+                                                 "Published port")
 
         self.set_deployment_parameter('hostname', node.get_cloud_node_ip(), node_instance_name)
         self.set_deployment_parameter(NodeDecorator.INSTANCEID_KEY, node.get_instance_id(), node_instance_name)
