@@ -192,13 +192,15 @@ class DeploymentStartJob(object):
         image_id = module_content.get('imageIDs', {}).get(cloud_instance_name)
         network_type = module_content.get('networkType')
         login_user = module_content.get('loginUser')
-        ports = module_content.get('ports', '').strip()
+        ports = module_content.get('ports', [])
+        mounts = module_content.get('mounts', [])
 
         node = NodeInstance({
             '{}.cpu'.format(cloud_instance_name): str(cpu),
             '{}.ram'.format(cloud_instance_name): str(ram / 1024),
             '{}.disk'.format(cloud_instance_name): str(disk),
-            '{}.publish'.format(cloud_instance_name): ports.split() if ports else [],
+            '{}.ports'.format(cloud_instance_name): ports,
+            '{}.mounts'.format(cloud_instance_name): mounts,
             '{}.security.groups'.format(cloud_instance_name): 'slipstream_managed',
             '{}.networks'.format(cloud_instance_name): '',
             '{}.instance.type'.format(cloud_instance_name): 'Micro',
@@ -245,8 +247,8 @@ class DeploymentStartJob(object):
                                                  port_details[1], node_instance_name,
                                                  "Published port")
 
-        self.set_deployment_parameter('hostname', node.get_cloud_node_ip(), node_instance_name)
         self.set_deployment_parameter(NodeDecorator.INSTANCEID_KEY, node.get_instance_id(), node_instance_name)
+        self.set_deployment_parameter('hostname', node.get_cloud_node_ip(), node_instance_name)
 
         self.ss_api.cimi_edit(self.deployment['id'], {'state': 'STARTED'})
 
