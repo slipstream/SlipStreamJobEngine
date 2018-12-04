@@ -140,7 +140,12 @@ class DeploymentStartJob(object):
             local_module = local_module.get('parent', {}).get('content', None)
         return all_module_params_merged
 
-    def create_deployment_parameters(self, node_name, node_params):
+    @staticmethod
+    def get_port_name_value(port_mapping):
+        port_details = port_mapping.split(':')
+        return '.'.join([port_details[0], port_details[2]]), port_details[1]
+
+    def create_deployment_parameters(self, node_name, node_params, ports):
         # Global service params
         deployment_owner = self.deployment['acl']['owner']['principal']
         for param in self.deployment['outputParameters']:
@@ -157,10 +162,33 @@ class DeploymentStartJob(object):
                                              node_id=node_name,
                                              param_description=param['description'])
 
+        for port_mapping in ports:
+            port_param_name, _ = self.get_port_name_value(port_mapping)
+            self.create_deployment_parameter(user=deployment_owner,
+                                             param_name=port_param_name,
+                                             node_id=node_name,
+                                             param_description='Published port')
+        self.create_deployment_parameter(user=deployment_owner,
+                                         param_name='tcp.22',
+                                         node_id=node_name,
+                                         param_description='Published port')
+
     def handle_deployment(self):
         node_instance_name = 'machine'
-        node_params = self.get_node_parameters(self.module['content'])
-        self.create_deployment_parameters(node_instance_name, node_params.values())
+
+        module_content = self.deployment['module'].get('content', {})
+
+        cpu = module_content.get('cpu')
+        ram = module_content.get('ram')
+        disk = module_content.get('disk')
+        network_type = module_content.get('networkType')
+        login_user = module_content.get('loginUser')
+        ports = module_content.get('ports', [])
+        mounts = module_content.get('mounts', [])
+
+        node_params = self.get_node_parameters(module_content)
+
+        self.create_deployment_parameters(node_instance_name, node_params.values(), ports)
         cloud_credential_id = node_params['credential.id'].get('value')
         if cloud_credential_id is None:
             raise ValueError("Credential is not set!")
@@ -184,16 +212,7 @@ class DeploymentStartJob(object):
 
         deployment_owner = self.deployment['acl']['owner']['principal']
 
-        module_content = self.deployment['module'].get('content', {})
-
-        cpu = module_content.get('cpu')
-        ram = module_content.get('ram')
-        disk = module_content.get('disk')
         image_id = module_content.get('imageIDs', {}).get(cloud_instance_name)
-        network_type = module_content.get('networkType')
-        login_user = module_content.get('loginUser')
-        ports = module_content.get('ports', [])
-        mounts = module_content.get('mounts', [])
 
         node = NodeInstance({
             '{}.cpu'.format(cloud_instance_name): str(cpu),
@@ -231,6 +250,14 @@ class DeploymentStartJob(object):
 
         connector_instance._BaseCloudConnector__start_node_instance_and_client(user_info, node)
 
+        self.set_deployment_parameter(param_name=NodeDecorator.INSTANCEID_KEY,
+                                      param_value=node.get_instance_id(),
+                                      node_id=node_instance_name)
+
+        self.set_deployment_parameter(param_name='hostname',
+                                      param_value=node.get_cloud_node_ip(),
+                                      node_id=node_instance_name)
+
         if node.get_cloud_node_ssh_url():
             self.set_deployment_parameter('url.ssh', node.get_cloud_node_ssh_url(), node_instance_name)
 
@@ -241,14 +268,11 @@ class DeploymentStartJob(object):
             self.set_deployment_parameter('keypair.name', node.get_cloud_node_ssh_keypair_name(), node_instance_name)
 
         if node.get_cloud_node_ports_mapping():
-            for port in node.get_cloud_node_ports_mapping().split():
-                port_details = port.split(':')
-                self.create_deployment_parameter(deployment_owner, '.'.join([port_details[0], port_details[2]]),
-                                                 port_details[1], node_instance_name,
-                                                 "Published port")
-
-        self.set_deployment_parameter(NodeDecorator.INSTANCEID_KEY, node.get_instance_id(), node_instance_name)
-        self.set_deployment_parameter('hostname', node.get_cloud_node_ip(), node_instance_name)
+            for port_mapping in node.get_cloud_node_ports_mapping().split():
+                port_param_name, port_param_value = self.get_port_name_value(port_mapping)
+                self.set_deployment_parameter(param_name=port_param_name,
+                                              param_value=port_param_value,
+                                              node_id=node_instance_name)
 
         self.ss_api.cimi_edit(self.deployment['id'], {'state': 'STARTED'})
 
