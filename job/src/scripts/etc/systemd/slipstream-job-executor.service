@@ -15,4 +15,4 @@ StandardOutput=/dev/null
 StandardError=/dev/null
 
 [Install]
-WantedBy=multi-user.targe
+WantedBy=multi-user.target
